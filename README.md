@@ -16,10 +16,10 @@
 ### 2. Master Node
 *   **Ρόλος:** Ο κεντρικός ενορχηστρωτής του συστήματος.
 *   **Hashing:** Χρησιμοποιεί τη συνάρτηση `H(GameName) mod NumberOfNodes` για τη δίκαιη κατανομή των παιχνιδιών στους Workers.
-*   **MapReduce:** Υλοποιεί τη λογική MapReduce για την αναζήτηση παιχνιδιών (Search) και τη συγκέντρωση στατιστικών.
+*   **MapReduce:** Υλοποιεί τη λογική MapReduce για την αναζήτηση παιχνιδιών (Search) και τη συγκέντρωση στατιστικών (Aggregation).
 
 ### 3. Worker Node
-*   **Δεδομένα:** Αποθηκεύει τα παιχνίδια σε **In-memory** δομές (`HashMap`).
+*   **Δεδομένα:** Αποθηκεύει τα παιχνίδια και τα στατιστικά παικτών σε **In-memory** δομές (`HashMap`).
 *   **Ποντάρισμα:** Επικοινωνεί με τον SRG, επαληθεύει το Hash και υπολογίζει το κέρδος/ζημιά βάσει των πινάκων ρίσκου (Low, Medium, High) και του Jackpot.
 *   **Συγχρονισμός:** Χρήση `synchronized` blocks για τη σωστή ενημέρωση των στατιστικών σε ταυτόχρονα πονταρίσματα.
 
@@ -27,30 +27,23 @@
 
 ## 🛠 Οδηγίες Εκτέλεσης (Testing)
 
-Για να τρέξετε το σύστημα, ανοίξτε 5 διαφορετικά terminals στον κατάλογο `src`:
+Για να τρέξετε το σύστημα, ανοίξτε διαφορετικά terminals στον κατάλογο `src`:
 
 1. **SRG Server:** `java SRG.SRGServer`
 2. **Worker 1:** `java Worker.WorkerNode 8001`
 3. **Worker 2:** `java Worker.WorkerNode 8002`
 4. **Master Node:** `java Master.MasterNode`
-5. **Manager App:** `java Manager.ManagerApp [GameName]` (προσθέτει παιχνίδι)
-6. **Player App:** `java Player.DummyPlayer` (αναζήτηση και ποντάρισμα)
+5. **Manager App (Add Game):** `java Manager.ManagerApp add game.json`
+6. **Manager App (Stats):** `java Manager.ManagerApp stats`
+7. **Player App:** `java Player.DummyPlayer` (Login, Φιλτράρισμα και Ποντάρισμα)
 
 ---
 
-## 📝 Εκκρεμότητες για το ΜΕΡΟΣ Α (Deadline: 03/04)
+## ✅ Ολοκληρωμένες Λειτουργίες ΜΕΡΟΥΣ Α
 
-Αυτά είναι τα σημεία που πρέπει να ολοκληρωθούν για την πρώτη παράδοση:
-
-1.  **JSON Parsing (ManagerApp):** 
-    *   Αντικατάσταση των hardcoded τιμών με ανάγνωση αρχείου `.json` (χρήση βιβλιοθήκης Gson ή Jackson).
-    *   Αποστολή του αντικειμένου `Game` στον Master.
-2.  **Filtering Logic (WorkerNode):** 
-    *   Η συνάρτηση `search()` πρέπει να δέχεται φίλτρα (Stars, Bet Limits, Risk Level).
-    *   Οι Workers πρέπει να επιστρέφουν μόνο τα παιχνίδια που ικανοποιούν τα κριτήρια.
-3.  **Aggregation Queries (Stats):** 
-    *   Υλοποίηση MapReduce για τον υπολογισμό συνολικών κερδών/ζημιών ανά **Πάροχο** και ανά **Παίκτη**.
-    *   Εμφάνιση των αποτελεσμάτων στο Manager Console.
+1.  **JSON Parsing (ManagerApp):** Υλοποίηση manual parser για την ανάγνωση των στοιχείων του παιχνιδιού από αρχεία `.json` και αποστολή τους στον Master.
+2.  **Filtering Logic (WorkerNode):** Η αναζήτηση (`SEARCH`) υποστηρίζει πλέον φίλτρα για Stars, Bet Category και Risk Level.
+3.  **MapReduce Aggregation (Stats):** Ολοκληρωμένη διαδικασία MapReduce για τον υπολογισμό συνολικών κερδών/ζημιών ανά **Πάροχο** και ανά **Παίκτη** από όλους τους Workers.
 
 ---
 
@@ -63,7 +56,7 @@
 ---
 
 ## 📂 Δομή Φακέλων
-- `Common/`: Κοινές κλάσεις και utility functions.
+- `Common/`: Κοινές κλάσεις (`Game`, `Filters`, `HashUtils`).
 - `Master/`: Κώδικας του Master Node.
 - `Worker/`: Κώδικας του Worker Node.
 - `SRG/`: Secured Random Generator server.
