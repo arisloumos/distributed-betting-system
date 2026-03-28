@@ -5,6 +5,7 @@ import java.net.*;
 import java.util.*;
 import Common.Game;
 import Common.HashUtils;
+import Common.Filters;
 
 public class WorkerNode {
     private static int myPort;
@@ -13,6 +14,8 @@ public class WorkerNode {
 
     // Η "βάση δεδομένων" μας στη μνήμη
     private static Map<String, Game> gamesMap = new HashMap<>();
+    // Στατιστικά ανά παίκτη: PlayerID -> Συνολικό Κέρδος/Ζημιά
+    private static Map<String, Double> playerStats = new HashMap<>();
 
     // Πίνακες Πολλαπλασιαστών βάσει εκφώνησης
     private static final double[] LOW_RISK = {0.0, 0.0, 0.0, 0.1, 0.5, 1.0, 1.1, 1.3, 2.0, 2.5};
@@ -51,7 +54,6 @@ public class WorkerNode {
                 ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
                 ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream())
             ) {
-                // Διαβάζουμε την εντολή από τον Master
                 String command = (String) in.readObject();
 
                 if (command.equals("ADD_GAME")) {
@@ -61,16 +63,38 @@ public class WorkerNode {
                     out.writeUTF("SUCCESS");
                 } 
                 else if (command.equals("SEARCH")) {
-                    // Map Phase: Φιλτράρισμα παιχνιδιών
-                    // Εδώ θα έρθουν τα φίλτρα (θα το κάνουμε στο επόμενο βήμα)
-                    out.writeObject(new ArrayList<>(gamesMap.values()));
+                    System.out.println("[WORKER " + myPort + "] Filtering games for Master...");
+
+                    // Λήψη φίλτρων από τον Master
+                    Filters f = (Filters) in.readObject();
+                    List<Game> filteredResults = new ArrayList<>();
+                    
+                    for (Game g : gamesMap.values()) {
+                        boolean matches = true;
+                        if (g.stars < f.minStars) matches = false;
+                        if (f.betCategory != null && !g.betCategory.equals(f.betCategory)) matches = false;
+                        if (f.riskLevel != null && !g.riskLevel.equals(f.riskLevel)) matches = false;
+                        
+                        if (matches) filteredResults.add(g);
+                    }
+                    out.writeObject(filteredResults);
                 }
                 else if (command.equals("PLAY")) {
+                    String playerId = in.readUTF(); // Λήψη ID παίκτη
                     String gameName = in.readUTF();
                     double betAmount = in.readDouble();
                     
-                    String result = processBet(gameName, betAmount);
+                    System.out.println("[WORKER " + myPort + "] Processing bet for player: " + playerId);
+
+                    String result = processBet(playerId, gameName, betAmount);
                     out.writeUTF(result);
+                }
+                else if (command.equals("GET_STATS")) {
+                    System.out.println("[WORKER " + myPort + "] Sending local stats to Master for Reduction.");
+                    
+                    // Στέλνουμε αντίγραφα των maps για το Reduce στον Master
+                    out.writeObject(new HashMap<>(gamesMap));
+                    out.writeObject(new HashMap<>(playerStats));
                 }
                 out.flush();
             } catch (Exception e) {
@@ -79,23 +103,19 @@ public class WorkerNode {
         }
     }
 
-    // Η λογική του πονταρίσματος
-    private static String processBet(String gameName, double betAmount) {
+    private static String processBet(String playerId, String gameName, double betAmount) {
         Game game = gamesMap.get(gameName);
         if (game == null) return "Game not found";
-
-        System.out.println("[Worker] Connecting to SRG for game: " + gameName); // DEBUG
 
         try (Socket srgSocket = new Socket(SRG_HOST, SRG_PORT);
             DataOutputStream out = new DataOutputStream(srgSocket.getOutputStream());
             DataInputStream in = new DataInputStream(srgSocket.getInputStream())) {
 
             out.writeUTF(game.hashKey);
-            out.flush(); // ΠΟΛΥ ΣΗΜΑΝΤΙΚΟ
+            out.flush();
 
             int randomNumber = in.readInt();
             String receivedHash = in.readUTF();
-            System.out.println("[Worker] Received number from SRG: " + randomNumber); // DEBUG
 
             String calculatedHash = HashUtils.sha256(randomNumber + game.hashKey);
             if (!calculatedHash.equals(receivedHash)) {
@@ -105,7 +125,6 @@ public class WorkerNode {
             double winAmount = 0;
             if (randomNumber % 100 == 0) {
                 winAmount = betAmount * game.jackpot;
-                System.out.println("[Worker] JACKPOT!!!"); // DEBUG
             } else {
                 int index = randomNumber % 10;
                 double multiplier = 0;
@@ -116,8 +135,15 @@ public class WorkerNode {
                 winAmount = betAmount * multiplier;
             }
 
+            // Ενημέρωση εσόδων παιχνιδιού (Manager Stats)
             synchronized (game) {
                 game.totalProfitLoss += (betAmount - winAmount);
+            }
+
+            // Ενημέρωση κέρδους/ζημιάς παίκτη (Player Stats)
+            synchronized (playerStats) {
+                double currentStatus = playerStats.getOrDefault(playerId, 0.0);
+                playerStats.put(playerId, currentStatus + (winAmount - betAmount));
             }
 
             String status;

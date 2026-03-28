@@ -4,15 +4,14 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import Common.Game;
+import Common.Filters;
 
 public class MasterNode {
     private static final int MASTER_PORT = 1234;
-    // Λίστα με τους Workers (IP και Port)
     private static List<WorkerInfo> workers = new ArrayList<>();
 
     public static void main(String[] args) {
-        // Για το Μέρος Α, ορίζουμε τους Workers χειροκίνητα
-        // Μπορείς να προσθέσεις όσους θες εδώ
+        // Ορισμός Workers
         workers.add(new WorkerInfo("localhost", 8001));
         workers.add(new WorkerInfo("localhost", 8002)); 
 
@@ -21,7 +20,6 @@ public class MasterNode {
         try (ServerSocket serverSocket = new ServerSocket(MASTER_PORT)) {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                // Κάθε σύνδεση (Manager ή Player) σε νέο Thread
                 new Thread(new ClientHandler(clientSocket)).start();
             }
         } catch (IOException e) {
@@ -44,36 +42,71 @@ public class MasterNode {
                 ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream())
             ) {
                 String requestType = (String) in.readObject();
+
                 if (requestType.equals("ADD_GAME")) {
+                    System.out.println("[MASTER] Routing ADD_GAME request to appropriate Worker...");
+                    
                     Game game = (Game) in.readObject();
-                    // 1. Hashing για επιλογή Worker
                     int workerIdx = Math.abs(game.gameName.hashCode()) % workers.size();
                     WorkerInfo target = workers.get(workerIdx);
                     
-                    // 2. Προώθηση στον Worker
                     String response = forwardToWorker(target, "ADD_GAME", game);
                     out.writeUTF(response);
                 } 
                 else if (requestType.equals("SEARCH")) {
-                    // MAP REDUCE: Ζητάμε από όλους τους Workers
+                    System.out.println("[MASTER] Executing MapReduce Search with filters...");
+
+                    // Λήψη φίλτρων από τον παίκτη
+                    Filters filters = (Filters) in.readObject();
+                    
+                    // MAP PHASE: Αποστολή φίλτρων σε όλους τους Workers
                     List<Game> allGames = new ArrayList<>();
                     for (WorkerInfo w : workers) {
-                        List<Game> workerGames = (List<Game>) forwardToWorkerObject(w, "SEARCH", null);
+                        List<Game> workerGames = forwardToWorkerSearch(w, filters);
                         if (workerGames != null) allGames.addAll(workerGames);
                     }
+                    // REDUCE PHASE: Επιστροφή συγκεντρωτικών αποτελεσμάτων
                     out.writeObject(allGames);
                 }
                 else if (requestType.equals("PLAY")) {
+                    System.out.println("[MASTER] Routing PLAY request to appropriate Worker...");
+
+                    String playerId = in.readUTF(); // Λήψη ID παίκτη
                     String gameName = in.readUTF();
                     double amount = in.readDouble();
                     
-                    // Hashing για να βρούμε ΠΟΥ είναι το παιχνίδι
                     int workerIdx = Math.abs(gameName.hashCode()) % workers.size();
                     WorkerInfo target = workers.get(workerIdx);
                     
-                    // Προώθηση εντολής PLAY στον σωστό Worker
-                    String result = forwardToWorkerPlay(target, gameName, amount);
+                    String result = forwardToWorkerPlay(target, playerId, gameName, amount);
                     out.writeUTF(result);
+                }
+                else if (requestType.equals("STATS")) {
+                    System.out.println("[MASTER] Executing MapReduce Aggregation for Stats...");
+
+                    // MAPREDUCE ΓΙΑ ΣΤΑΤΙΣΤΙΚΑ
+                    Map<String, Double> providerStats = new HashMap<>();
+                    Map<String, Double> playerStats = new HashMap<>();
+
+                    for (WorkerInfo w : workers) {
+                        // Ζητάμε stats από κάθε Worker
+                        Map<String, Object> wData = forwardToWorkerStats(w);
+                        if (wData != null) {
+                            Map<String, Game> wGames = (Map<String, Game>) wData.get("games");
+                            Map<String, Double> wPlayers = (Map<String, Double>) wData.get("players");
+
+                            // Reduce για Providers (από τα Games)
+                            for (Game g : wGames.values()) {
+                                providerStats.put(g.providerName, providerStats.getOrDefault(g.providerName, 0.0) + g.totalProfitLoss);
+                            }
+                            // Reduce για Players
+                            for (Map.Entry<String, Double> entry : wPlayers.entrySet()) {
+                                playerStats.put(entry.getKey(), playerStats.getOrDefault(entry.getKey(), 0.0) + entry.getValue());
+                            }
+                        }
+                    }
+                    out.writeObject(providerStats);
+                    out.writeObject(playerStats);
                 }
                 out.flush();
             } catch (Exception e) {
@@ -81,7 +114,6 @@ public class MasterNode {
             }
         }
 
-        // Βοηθητική μέθοδος για αποστολή εντολής ADD_GAME σε Worker
         private String forwardToWorker(WorkerInfo w, String cmd, Game game) {
             try (Socket s = new Socket(w.host, w.port);
                  ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
@@ -92,33 +124,44 @@ public class MasterNode {
             } catch (Exception e) { return "Worker Error"; }
         }
 
-        // Βοηθητική μέθοδος για SEARCH (Map Phase)
-        private Object forwardToWorkerObject(WorkerInfo w, String cmd, Object data) {
+        @SuppressWarnings("unchecked")
+        private List<Game> forwardToWorkerSearch(WorkerInfo w, Filters f) {
             try (Socket s = new Socket(w.host, w.port);
                  ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
                  ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
-                out.writeObject(cmd);
-                return in.readObject();
+                out.writeObject("SEARCH");
+                out.writeObject(f);
+                return (List<Game>) in.readObject();
             } catch (Exception e) { return null; }
         }
 
-        // Βοηθητική μέθοδος για PLAY
-        private String forwardToWorkerPlay(WorkerInfo w, String gameName, double amount) {
-            System.out.println("[Master] Forwarding PLAY to Worker at " + w.port); // DEBUG
+        private String forwardToWorkerPlay(WorkerInfo w, String pId, String gName, double amt) {
             try (Socket s = new Socket(w.host, w.port);
                 ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
                 ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
-                
                 out.writeObject("PLAY");
-                out.writeUTF(gameName);
-                out.writeDouble(amount);
-                out.flush(); // ΣΤΕΙΛΕ ΤΑ ΤΩΡΑ
+                out.writeUTF(pId);
+                out.writeUTF(gName);
+                out.writeDouble(amt);
+                out.flush();
+                return in.readUTF();
+            } catch (Exception e) { return "Worker Error"; }
+        }
+
+        @SuppressWarnings("unchecked")
+        private Map<String, Object> forwardToWorkerStats(WorkerInfo w) {
+            try (Socket s = new Socket(w.host, w.port);
+                 ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
+                 ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
+                out.writeObject("GET_STATS");
+                Map<String, Game> games = (Map<String, Game>) in.readObject();
+                Map<String, Double> players = (Map<String, Double>) in.readObject();
                 
-                return in.readUTF(); // Περίμενε την απάντηση από τον Worker
-            } catch (Exception e) { 
-                e.printStackTrace();
-                return "Worker Error"; 
-            }
+                Map<String, Object> result = new HashMap<>();
+                result.put("games", games);
+                result.put("players", players);
+                return result;
+            } catch (Exception e) { return null; }
         }
     }
 

@@ -74,6 +74,7 @@ public class SRGServer {
             ) {
                 // Ο Worker στέλνει το Secret S (hashKey) του παιχνιδιού
                 String secretS = in.readUTF();
+                System.out.println("[SRG] Worker requested a random number. Generating and hashing...");
                 
                 int randomNumber;
                 synchronized (buffer) {

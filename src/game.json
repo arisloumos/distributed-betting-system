@@ -1,0 +1,11 @@
+{
+"GameName":"MegaFortune",
+"ProviderName": "NetEnt",
+"Stars": 4,
+"NoOfVotes": 150,
+"GameLogo": "logo.png",
+"MinBet": 0.1,
+"MaxBet": 100,
+"RiskLevel": "medium",
+"HashKey": "secret123"
+}
