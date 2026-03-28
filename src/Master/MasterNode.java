@@ -2,172 +2,213 @@ package Master;
 
 import java.io.*;
 import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
-import Common.Game;
-import Common.Filters;
+import Common.*;
 
 public class MasterNode {
     private static final int MASTER_PORT = 1234;
+    private static final int REDUCER_PORT = 4444;
     private static List<WorkerInfo> workers = new ArrayList<>();
+    private static Map<String, Double> playerBalances = new HashMap<>();
 
     public static void main(String[] args) {
-        // Ορισμός Workers
-        workers.add(new WorkerInfo("localhost", 8001));
-        workers.add(new WorkerInfo("localhost", 8002)); 
-
-        System.out.println("Master Node started on port " + MASTER_PORT);
-
-        try (ServerSocket serverSocket = new ServerSocket(MASTER_PORT)) {
-            while (true) {
-                Socket clientSocket = serverSocket.accept();
-                new Thread(new ClientHandler(clientSocket)).start();
+        // ΔΥΝΑΜΙΚΗ ΦΟΡΤΩΣΗ WORKERS ΑΠΟ ΑΡΧΕΙΟ
+        try {
+            List<String> lines = Files.readAllLines(Paths.get("workers.conf"));
+            for (String line : lines) {
+                String[] parts = line.split(":");
+                workers.add(new WorkerInfo(parts[0], Integer.parseInt(parts[1])));
             }
+            System.out.println("Loaded " + workers.size() + " workers from config.");
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Could not load workers.conf. Using default localhost:8001");
+            workers.add(new WorkerInfo("localhost", 8001));
         }
+
+        System.out.println("Master started on " + MASTER_PORT);
     }
 
     static class ClientHandler implements Runnable {
-        private Socket clientSocket;
-
-        public ClientHandler(Socket socket) {
-            this.clientSocket = socket;
-        }
+        private Socket s;
+        public ClientHandler(Socket s) { this.s = s; }
 
         @Override
         @SuppressWarnings("unchecked")
         public void run() {
-            try (
-                ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
-                ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream())
-            ) {
-                String requestType = (String) in.readObject();
+            try (ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
+                 ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
+                
+                String type = (String) in.readObject();
+                System.out.println("[MASTER] Processing: " + type);
 
-                if (requestType.equals("ADD_GAME")) {
-                    System.out.println("[MASTER] Routing ADD_GAME request to appropriate Worker...");
-                    
-                    Game game = (Game) in.readObject();
-                    int workerIdx = Math.abs(game.gameName.hashCode()) % workers.size();
-                    WorkerInfo target = workers.get(workerIdx);
-                    
-                    String response = forwardToWorker(target, "ADD_GAME", game);
-                    out.writeUTF(response);
-                } 
-                else if (requestType.equals("SEARCH")) {
-                    System.out.println("[MASTER] Executing MapReduce Search with filters...");
-
-                    // Λήψη φίλτρων από τον παίκτη
-                    Filters filters = (Filters) in.readObject();
-                    
-                    // MAP PHASE: Αποστολή φίλτρων σε όλους τους Workers
-                    List<Game> allGames = new ArrayList<>();
+                if (type.equals("ADD_GAME")) {
+                    Game g = (Game) in.readObject();
+                    int idx = Math.abs(g.gameName.hashCode()) % workers.size();
+                    out.writeUTF(forwardAdd(workers.get(idx), g));
+                }
+                // ΕΔΩ ΕΙΝΑΙ Η ΜΕΓΑΛΗ ΑΛΛΑΓΗ: Μία μέθοδος για όλα τα Updates
+                else if (type.equals("REMOVE_GAME") || type.equals("EDIT_GAME") || type.equals("RATE_GAME")) {
+                    String name = in.readUTF();
+                    int idx = Math.abs(name.hashCode()) % workers.size();
+                    out.writeUTF(forwardUpdateToWorker(workers.get(idx), type, name, in));
+                }
+                else if (type.equals("SEARCH")) {
+                    Filters f = (Filters) in.readObject();
+                    List<Game> allResults = new ArrayList<>();
                     for (WorkerInfo w : workers) {
-                        List<Game> workerGames = forwardToWorkerSearch(w, filters);
-                        if (workerGames != null) allGames.addAll(workerGames);
+                        allResults.addAll(forwardSearch(w, f));
                     }
-                    // REDUCE PHASE: Επιστροφή συγκεντρωτικών αποτελεσμάτων
-                    out.writeObject(allGames);
+                    out.writeObject(allResults);
                 }
-                else if (requestType.equals("PLAY")) {
-                    System.out.println("[MASTER] Routing PLAY request to appropriate Worker...");
-
-                    String playerId = in.readUTF(); // Λήψη ID παίκτη
-                    String gameName = in.readUTF();
-                    double amount = in.readDouble();
-                    
-                    int workerIdx = Math.abs(gameName.hashCode()) % workers.size();
-                    WorkerInfo target = workers.get(workerIdx);
-                    
-                    String result = forwardToWorkerPlay(target, playerId, gameName, amount);
-                    out.writeUTF(result);
-                }
-                else if (requestType.equals("STATS")) {
-                    System.out.println("[MASTER] Executing MapReduce Aggregation for Stats...");
-
-                    // MAPREDUCE ΓΙΑ ΣΤΑΤΙΣΤΙΚΑ
-                    Map<String, Double> providerStats = new HashMap<>();
-                    Map<String, Double> playerStats = new HashMap<>();
-
+                else if (type.equals("STATS")) {
+                    callReducer("RESET_STATS");
+                    // Ειδοποιούμε τους workers να στείλουν δεδομένα στον Reducer
                     for (WorkerInfo w : workers) {
-                        // Ζητάμε stats από κάθε Worker
-                        Map<String, Object> wData = forwardToWorkerStats(w);
-                        if (wData != null) {
-                            Map<String, Game> wGames = (Map<String, Game>) wData.get("games");
-                            Map<String, Double> wPlayers = (Map<String, Double>) wData.get("players");
+                        forwardSimpleCmd(w, "PUSH_TO_REDUCER"); 
+                    }
+                    Map<String, Object> results = getResultsFromReducer();
+                    out.writeObject(results.get("providers"));
+                    out.writeObject(results.get("players"));
+                }
+                else if (type.equals("PLAY")) {
+                    String pId = in.readUTF();
+                    String gName = in.readUTF();
+                    double amt = in.readDouble();
 
-                            // Reduce για Providers (από τα Games)
-                            for (Game g : wGames.values()) {
-                                providerStats.put(g.providerName, providerStats.getOrDefault(g.providerName, 0.0) + g.totalProfitLoss);
-                            }
-                            // Reduce για Players
-                            for (Map.Entry<String, Double> entry : wPlayers.entrySet()) {
-                                playerStats.put(entry.getKey(), playerStats.getOrDefault(entry.getKey(), 0.0) + entry.getValue());
+                    synchronized(playerBalances) {
+                        double currentBal = playerBalances.getOrDefault(pId, 0.0);
+                        
+                        if (currentBal < amt) {
+                            out.writeUTF("REJECTED: Insufficient Balance. Current: " + currentBal + " tokens.");
+                        } else {
+                            playerBalances.put(pId, currentBal - amt);
+                            
+                            int idx = Math.abs(gName.hashCode()) % workers.size();
+                            // Εδώ καλείται η διορθωμένη μέθοδος
+                            double winAmount = forwardPlayToWorkerNumeric(workers.get(idx), pId, gName, amt);
+                            
+                            if (winAmount >= 0) {
+                                playerBalances.put(pId, playerBalances.get(pId) + winAmount);
+                                String msg = (winAmount > amt) ? "WIN " + winAmount : (winAmount == amt ? "DRAW" : "LOSS");
+                                out.writeUTF(msg + " | New Balance: " + playerBalances.get(pId));
+                            } else {
+                                playerBalances.put(pId, playerBalances.get(pId) + amt);
+                                out.writeUTF("ERROR: Transaction failed. Balance restored.");
                             }
                         }
                     }
-                    out.writeObject(providerStats);
-                    out.writeObject(playerStats);
                 }
+                else if (type.equals("ADD_BALANCE")) {
+                    String pId = in.readUTF();
+                    double amount = in.readDouble();
+                    synchronized(playerBalances) {
+                        playerBalances.put(pId, playerBalances.getOrDefault(pId, 0.0) + amount);
+                    }
+                    out.writeUTF("New Balance for " + pId + ": " + playerBalances.get(pId) + " tokens.");
+                }
+                else if (type.equals("GET_BALANCE")) {
+                    String pId = in.readUTF();
+                    out.writeUTF("Your current balance: " + playerBalances.getOrDefault(pId, 0.0) + " tokens.");
+                }
+
                 out.flush();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            } catch (Exception e) { e.printStackTrace(); }
         }
 
-        private String forwardToWorker(WorkerInfo w, String cmd, Game game) {
-            try (Socket s = new Socket(w.host, w.port);
-                 ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
-                 ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
-                out.writeObject(cmd);
-                out.writeObject(game);
-                return in.readUTF();
-            } catch (Exception e) { return "Worker Error"; }
-        }
-
-        @SuppressWarnings("unchecked")
-        private List<Game> forwardToWorkerSearch(WorkerInfo w, Filters f) {
-            try (Socket s = new Socket(w.host, w.port);
-                 ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
-                 ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
-                out.writeObject("SEARCH");
-                out.writeObject(f);
-                return (List<Game>) in.readObject();
-            } catch (Exception e) { return null; }
-        }
-
-        private String forwardToWorkerPlay(WorkerInfo w, String pId, String gName, double amt) {
-            try (Socket s = new Socket(w.host, w.port);
-                ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
-                ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
-                out.writeObject("PLAY");
-                out.writeUTF(pId);
-                out.writeUTF(gName);
-                out.writeDouble(amt);
-                out.flush();
-                return in.readUTF();
-            } catch (Exception e) { return "Worker Error"; }
-        }
-
-        @SuppressWarnings("unchecked")
-        private Map<String, Object> forwardToWorkerStats(WorkerInfo w) {
-            try (Socket s = new Socket(w.host, w.port);
-                 ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
-                 ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
-                out.writeObject("GET_STATS");
-                Map<String, Game> games = (Map<String, Game>) in.readObject();
-                Map<String, Double> players = (Map<String, Double>) in.readObject();
+        // Η "έξυπνη" μέθοδος που προωθεί τα πάντα σωστά
+        private String forwardUpdateToWorker(WorkerInfo w, String type, String name, ObjectInputStream clientIn) {
+            try (Socket sock = new Socket(w.host, w.port);
+                 ObjectOutputStream outW = new ObjectOutputStream(sock.getOutputStream());
+                 ObjectInputStream inW = new ObjectInputStream(sock.getInputStream())) {
                 
-                Map<String, Object> result = new HashMap<>();
-                result.put("games", games);
-                result.put("players", players);
-                return result;
-            } catch (Exception e) { return null; }
+                outW.writeObject(type);
+                outW.writeUTF(name);
+                
+                if (type.equals("EDIT_GAME")) {
+                    String newRisk = clientIn.readUTF();
+                    outW.writeUTF(newRisk);
+                } else if (type.equals("RATE_GAME")) {
+                    int stars = clientIn.readInt();
+                    outW.writeInt(stars);
+                }
+                
+                outW.flush();
+                return inW.readUTF();
+            } catch (Exception e) { return "Worker Error"; }
+        }
+
+        private String forwardAdd(WorkerInfo w, Game g) {
+            try (Socket sock = new Socket(w.host, w.port);
+                 ObjectOutputStream outW = new ObjectOutputStream(sock.getOutputStream());
+                 ObjectInputStream inW = new ObjectInputStream(sock.getInputStream())) {
+                outW.writeObject("ADD_GAME");
+                outW.writeObject(g);
+                outW.flush();
+                return inW.readUTF();
+            } catch (Exception e) { return "Worker Error"; }
+        }
+
+        private List<Game> forwardSearch(WorkerInfo w, Filters f) {
+            try (Socket sock = new Socket(w.host, w.port);
+                 ObjectOutputStream outW = new ObjectOutputStream(sock.getOutputStream());
+                 ObjectInputStream inW = new ObjectInputStream(sock.getInputStream())) {
+                outW.writeObject("SEARCH");
+                outW.writeObject(f);
+                outW.flush();
+                return (List<Game>) inW.readObject();
+            } catch (Exception e) { return new ArrayList<>(); }
+        }
+
+        private void forwardSimpleCmd(WorkerInfo w, String cmd) {
+            try (Socket sock = new Socket(w.host, w.port);
+                 ObjectOutputStream outW = new ObjectOutputStream(sock.getOutputStream());
+                 ObjectInputStream inW = new ObjectInputStream(sock.getInputStream())) {
+                outW.writeObject(cmd);
+                outW.flush();
+                inW.readUTF(); // Περιμένει το "DATA_SENT" για συγχρονισμό
+            } catch (Exception e) {}
+        }
+
+        private double forwardPlayToWorkerNumeric(WorkerInfo w, String pId, String gName, double amt) {
+            try (Socket sock = new Socket(w.host, w.port);
+                ObjectOutputStream outW = new ObjectOutputStream(sock.getOutputStream());
+                ObjectInputStream inW = new ObjectInputStream(sock.getInputStream())) {
+                
+                outW.writeObject("PLAY");
+                outW.writeUTF(pId); 
+                outW.writeUTF(gName); 
+                outW.writeDouble(amt);
+                outW.flush();
+                
+                // Διαβάζουμε double από τον Worker
+                return inW.readDouble(); 
+            } catch (Exception e) { 
+                return -3.0; // Error code ως double
+            }
         }
     }
 
-    static class WorkerInfo {
-        String host;
-        int port;
-        WorkerInfo(String h, int p) { this.host = h; this.port = p; }
+    private static void callReducer(String cmd) {
+        try (Socket s = new Socket("localhost", REDUCER_PORT);
+             ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream())) {
+            out.writeObject(cmd);
+            out.flush();
+        } catch (Exception e) {}
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> getResultsFromReducer() {
+        try (Socket s = new Socket("localhost", REDUCER_PORT);
+             ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
+             ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
+            out.writeObject("GET_REDUCED_RESULTS");
+            out.flush();
+            Map<String, Object> res = new HashMap<>();
+            res.put("providers", in.readObject());
+            res.put("players", in.readObject());
+            return res;
+        } catch (Exception e) { return new HashMap<>(); }
     }
 }

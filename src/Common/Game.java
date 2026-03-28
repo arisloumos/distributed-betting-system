@@ -1,60 +1,45 @@
 package Common;
-
 import java.io.Serializable;
 
 public class Game implements Serializable {
     private static final long serialVersionUID = 1L;
+    public String gameName, providerName, gameLogoPath, riskLevel, betCategory, hashKey;
+    public int stars, noOfVotes;
+    public double minBet, maxBet, jackpot, totalProfitLoss = 0.0;
+    public boolean isActive = true;
+    
+    // Πρέπει να είναι public για να γίνονται Serialize σωστά
+    public int totalStarsSum = 0; 
 
-    // Πεδία από το JSON
-    public String gameName;
-    public String providerName;
-    public int stars;
-    public int noOfVotes;
-    public String gameLogoPath;
-    public double minBet;
-    public double maxBet;
-    public String riskLevel; // low, medium, high
-    public String hashKey;   // Το secret S για τον Random Generator
+    public Game(String name, String provider, int stars, int votes, String logo, double min, double max, String risk, String key) {
+        this.gameName = name; this.providerName = provider; this.stars = stars;
+        this.noOfVotes = votes; this.gameLogoPath = logo; this.minBet = min;
+        this.maxBet = max; this.riskLevel = risk.toLowerCase(); this.hashKey = key;
+        this.totalStarsSum = stars * votes;
+        calculateAutomaticFields();
+    }
 
-    // Πεδία που υπολογίζονται αυτόματα
-    public String betCategory; // $, $$, $$$
-    public double jackpot;
-    public double totalProfitLoss = 0.0;
+    public void calculateAutomaticFields() {
+        if (minBet >= 5.0) betCategory = "$$$";
+        else if (minBet >= 1.0) betCategory = "$$";
+        else betCategory = "$";
+        if (riskLevel.equals("low")) jackpot = 10.0;
+        else if (riskLevel.equals("medium")) jackpot = 20.0;
+        else jackpot = 40.0;
+    }
 
-    public Game(String gameName, String providerName, int stars, int noOfVotes, 
-                String gameLogoPath, double minBet, double maxBet, String riskLevel, String hashKey) {
-        this.gameName = gameName;
-        this.providerName = providerName;
-        this.stars = stars;
-        this.noOfVotes = noOfVotes;
-        this.gameLogoPath = gameLogoPath;
-        this.minBet = minBet;
-        this.maxBet = maxBet;
-        this.riskLevel = riskLevel.toLowerCase();
-        this.hashKey = hashKey;
-
-        // Αυτόματος υπολογισμός Κατηγορίας Πονταρίσματος
-        if (minBet >= 5.0) {
-            this.betCategory = "$$$";
-        } else if (minBet >= 1.0) {
-            this.betCategory = "$$";
-        } else {
-            this.betCategory = "$";
-        }
-
-        // Αυτόματος υπολογισμός Jackpot βάσει Risk Level
-        if (this.riskLevel.equals("low")) {
-            this.jackpot = 10.0;
-        } else if (this.riskLevel.equals("medium")) {
-            this.jackpot = 20.0;
-        } else if (this.riskLevel.equals("high")) {
-            this.jackpot = 40.0;
-        }
+    public void updateJackpot() { calculateAutomaticFields(); }
+    
+    public void addRating(int r) {
+        this.totalStarsSum += r;
+        this.noOfVotes++;
+        // Υπολογισμός μέσου όρου
+        this.stars = (int) Math.round((double) totalStarsSum / noOfVotes);
     }
 
     @Override
     public String toString() {
-        return "Game: " + gameName + " [" + betCategory + "] | Risk: " + riskLevel + 
-               " | Stars: " + stars + " | Jackpot: x" + jackpot;
+        return String.format("Game: %-12s [%s] | Stars: %d (%d votes) | Risk: %-6s | Jackpot: x%.0f", 
+                gameName, betCategory, stars, noOfVotes, riskLevel, jackpot);
     }
 }

@@ -1,64 +1,99 @@
-# Distributed Betting System - AUEB 2025-2026
+# Distributed Gaming & Betting Platform (AUEB 2025-2026)
 
-Αυτή είναι η υλοποίηση της εργασίας για το μάθημα **Κατανεμημένα Συστήματα**. Το σύστημα προσομοιώνει μια πλατφόρμα online τυχερών παιχνιδιών χρησιμοποιώντας μια κατανεμημένη αρχιτεκτονική με Master-Worker nodes και MapReduce framework.
-
----
-
-## 🏗 Αρχιτεκτονική & Υλοποίηση (Backend Core)
-
-Το backend έχει υλοποιηθεί πλήρως σε **Java** χρησιμοποιώντας αποκλειστικά **TCP Sockets** και **Multithreading**.
-
-### 1. SRG (Secured Random Generator)
-*   **Λειτουργία:** Αυτόνομος TCP Server που παράγει τυχαίους αριθμούς.
-*   **Τεχνικά Χαρακτηριστικά:** Υλοποίηση μοντέλου **Producer-Consumer** με χρήση `synchronized`, `wait()` και `notify()`. 
-*   **Ασφάλεια:** Κάθε αριθμός αποστέλλεται μαζί με ένα **SHA-256 Hash** (αριθμός + secret) για την επαλήθευση της εγκυρότητας από τον Worker.
-
-### 2. Master Node
-*   **Ρόλος:** Ο κεντρικός ενορχηστρωτής του συστήματος.
-*   **Hashing:** Χρησιμοποιεί τη συνάρτηση `H(GameName) mod NumberOfNodes` για τη δίκαιη κατανομή των παιχνιδιών στους Workers.
-*   **MapReduce:** Υλοποιεί τη λογική MapReduce για την αναζήτηση παιχνιδιών (Search) και τη συγκέντρωση στατιστικών (Aggregation).
-
-### 3. Worker Node
-*   **Δεδομένα:** Αποθηκεύει τα παιχνίδια και τα στατιστικά παικτών σε **In-memory** δομές (`HashMap`).
-*   **Ποντάρισμα:** Επικοινωνεί με τον SRG, επαληθεύει το Hash και υπολογίζει το κέρδος/ζημιά βάσει των πινάκων ρίσκου (Low, Medium, High) και του Jackpot.
-*   **Συγχρονισμός:** Χρήση `synchronized` blocks για τη σωστή ενημέρωση των στατιστικών σε ταυτόχρονα πονταρίσματα.
+Ολοκληρωμένη υλοποίηση του **Μέρους Α** για το μάθημα "Κατανεμημένα Συστήματα". Το σύστημα αποτελεί μια πλήρως κατανεμημένη πλατφόρμα online τυχερών παιχνιδιών, βασισμένη στην αρχιτεκτονική **Master-Worker** με ενσωματωμένο **MapReduce Framework** για την επεξεργασία δεδομένων μεγάλης κλίμακας.
 
 ---
 
-## 🛠 Οδηγίες Εκτέλεσης (Testing)
+## 🏗 Αρχιτεκτονική Συστήματος
 
-Για να τρέξετε το σύστημα, ανοίξτε διαφορετικά terminals στον κατάλογο `src`:
+Το σύστημα αποτελείται από 4 κύρια κατανεμημένα components που επικοινωνούν αποκλειστικά μέσω **TCP Sockets**:
 
-1. **SRG Server:** `java SRG.SRGServer`
-2. **Worker 1:** `java Worker.WorkerNode 8001`
-3. **Worker 2:** `java Worker.WorkerNode 8002`
-4. **Master Node:** `java Master.MasterNode`
-5. **Manager App (Add Game):** `java Manager.ManagerApp add game.json`
-6. **Manager App (Stats):** `java Manager.ManagerApp stats`
-7. **Player App:** `java Player.DummyPlayer` (Login, Φιλτράρισμα και Ποντάρισμα)
+1.  **Master Node (Orchestrator):** 
+    *   Η πύλη εισόδου για Manager και Παίκτες.
+    *   **Load Balancing:** Υλοποίηση Hashing `H(GameName) mod N` για τη δίκαιη κατανομή των παιχνιδιών στους Workers.
+    *   **Transaction Management:** Κεντρική διαχείριση των Balances (Tokens) των παικτών με thread-safe ελέγχους.
+    *   **MapReduce Coordinator:** Ενορχηστρώνει τις φάσεις Map και Reduce.
+
+2.  **Worker Nodes (Data Nodes):** 
+    *   Αποθηκεύουν τα δεδομένα των παιχνιδιών σε **In-memory** δομές.
+    *   Εκτελούν τη φάση **Map** κατά την αναζήτηση (Filtering) και τη συγκέντρωση στατιστικών.
+    *   Διαχειρίζονται τη λογική πονταρίσματος και επικοινωνούν με τον SRG.
+
+3.  **Reducer Node (Aggregation Node):** 
+    *   Ανεξάρτητος Server που εκτελεί τη φάση **Reduce**.
+    *   Συλλέγει ενδιάμεσα αποτελέσματα από όλους τους Workers και τα συγχωνεύει σε τελικά analytics ανά Πάροχο, ανά Παιχνίδι και ανά Παίκτη.
+
+4.  **Secured Random Generator (SRG):** 
+    *   TCP Server που λειτουργεί με το μοντέλο **Producer-Consumer** (`wait/notify`).
+    *   **Security:** Παραγωγή τυχαίων αριθμών με επαλήθευση **SHA-256 Hash** (αριθμός + secret) για την αποτροπή απάτης.
 
 ---
 
-## ✅ Ολοκληρωμένες Λειτουργίες ΜΕΡΟΥΣ Α
+## 🚀 Λειτουργίες (Features)
 
-1.  **JSON Parsing (ManagerApp):** Υλοποίηση manual parser για την ανάγνωση των στοιχείων του παιχνιδιού από αρχεία `.json` και αποστολή τους στον Master.
-2.  **Filtering Logic (WorkerNode):** Η αναζήτηση (`SEARCH`) υποστηρίζει πλέον φίλτρα για Stars, Bet Category και Risk Level.
-3.  **MapReduce Aggregation (Stats):** Ολοκληρωμένη διαδικασία MapReduce για τον υπολογισμό συνολικών κερδών/ζημιών ανά **Πάροχο** και ανά **Παίκτη** από όλους τους Workers.
+### 👨‍💼 Διαχείριση (Manager)
+*   **Add Game:** Δυναμική προσθήκη παιχνιδιών μέσω **JSON Parsing**.
+*   **Edit Risk:** Αλλαγή επιπέδου ρίσκου (Low, Medium, High) με αυτόματο επανυπολογισμό του Jackpot.
+*   **Remove Game:** Απενεργοποίηση παιχνιδιού (Soft Delete) ώστε να μην εμφανίζεται στους παίκτες αλλά να διατηρούνται τα ιστορικά στατιστικά.
+*   **Real-time Analytics:** Προβολή κερδών/ζημιών με ανάλυση: `Provider -> Game -> Total P/L`.
+
+### 🕹 Εμπειρία Παίκτη (Player)
+*   **Token System:** Πλήρες σύστημα Balance. Έλεγχος υπολοίπου πριν από κάθε ποντάρισμα και αυτόματη ενημέρωση μετά το αποτέλεσμα.
+*   **Advanced Filtering:** Αναζήτηση παιχνιδιών με συνδυαστικά φίλτρα (Stars, Bet Category $, Risk Level).
+*   **Rating System:** Δυνατότητα βαθμολογίας (1-5 αστέρια) με δυναμική ενημέρωση του μέσου όρου και του πλήθους των ψήφων.
 
 ---
 
-## 📱 ΜΕΡΟΣ Β (Deadline: 10/05)
+## 🛠 Οδηγίες Εκτέλεσης (Setup)
 
-*   **Android Application:** Αντικατάσταση του `DummyPlayer` με UI σε Android.
-*   **Async Communication:** Υλοποίηση ασύγχρονης επικοινωνίας (Threads) για να παραμένει το UI διαδραστικό.
-*   **Bonus (+20%):** Υλοποίηση **Active Replication** για fault tolerance (αντίγραφα δεδομένων σε πολλαπλούς Workers).
+Για την πλήρη προσομοίωση του κατανεμημένου περιβάλλοντος, απαιτούνται **7 τερματικά** στον κατάλογο `src`:
+
+### 1. Compile
+```bash
+javac Common/*.java SRG/*.java Reducer/*.java Worker/*.java Master/*.java Manager/*.java Player/*.java
+```
+
+### 2. Configuration (Dynamic Workers)
+Πριν την εκκίνηση, βεβαιωθείτε ότι υπάρχει το αρχείο `workers.conf` στον κατάλογο `src` με τις διευθύνσεις των Workers:
+```text
+localhost:8001
+localhost:8002
+```
+
+### 3. Εκκίνηση Backend (Με τη σειρά)
+1.  **SRG:** `java SRG.SRGServer`
+2.  **Reducer:** `java Reducer.ReducerNode`
+3.  **Worker 1:** `java Worker.WorkerNode 8001`
+4.  **Worker 2:** `java Worker.WorkerNode 8002`
+5.  **Master:** `java Master.MasterNode` (Θα φορτώσει αυτόματα τους Workers από το .conf)
+
+### 4. Εκκίνηση Clients
+*   **Manager:** `java Manager.ManagerApp`
+*   **Player:** `java Player.DummyPlayer`
+
+ **Player:** `java Player.DummyPlayer`
+
+---
+
+## 📊 Η Διαδικασία MapReduce (Stats Flow)
+Όταν ο Manager ζητάει στατιστικά, το σύστημα εκτελεί τα εξής:
+1.  **Master:** Στέλνει σήμα `RESET` στον Reducer και εντολή `PUSH` στους Workers.
+2.  **Map Phase:** Κάθε Worker επεξεργάζεται τα τοπικά του δεδομένα και στέλνει τα ενδιάμεσα αποτελέσματα στον Reducer.
+3.  **Shuffle:** Η μεταφορά των δεδομένων γίνεται μέσω TCP Sockets.
+4.  **Reduce Phase:** Ο Reducer αθροίζει τα δεδομένα ανά κλειδί (Provider/Player).
+5.  **Final Result:** Ο Master λαμβάνει το τελικό aggregated Map και το εμφανίζει στον Manager.
 
 ---
 
 ## 📂 Δομή Φακέλων
-- `Common/`: Κοινές κλάσεις (`Game`, `Filters`, `HashUtils`).
-- `Master/`: Κώδικας του Master Node.
-- `Worker/`: Κώδικας του Worker Node.
-- `SRG/`: Secured Random Generator server.
-- `Manager/`: Console application για διαχειριστές.
-- `Player/`: Dummy console application για παίκτες (Phase A).
+*   `Common/`: `Game`, `Filters`, `HashUtils` (Κοινές οντότητες).
+*   `Master/`: `MasterNode`, `WorkerInfo` (Ενορχήστρωση).
+*   `Worker/`: `WorkerNode` (Διαχείριση δεδομένων & Ποντάρισμα).
+*   `Reducer/`: `ReducerNode` (Συγκέντρωση στατιστικών).
+*   `SRG/`: `SRGServer` (Ασφαλής γεννήτρια).
+*   `Manager/`: `ManagerApp` (Διαχειριστικό console).
+*   `Player/`: `DummyPlayer` (Εφαρμογή παίκτη).
+*   `Games/`: `game1`, `game2`, `game3` (Παιχνίδια JSON).
+
+---
+*Υλοποιήθηκε στα πλαίσια του μαθήματος "Κατανεμημένα Συστήματα" του Οικονομικού Πανεπιστημίου Αθηνών - Εαρινό Εξάμηνο 2025-2026.*

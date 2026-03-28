@@ -1,0 +1,11 @@
+{
+"GameName":"Starburst",
+"ProviderName": "NetEnt",
+"Stars": 5,
+"NoOfVotes": 10,
+"GameLogo": "star.png",
+"MinBet": 1.0,
+"MaxBet": 50,
+"RiskLevel": "low",
+"HashKey": "key456"
+}

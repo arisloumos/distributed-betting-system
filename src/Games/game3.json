@@ -1,0 +1,11 @@
+{
+"GameName":"ImmortalRomance",
+"ProviderName": "Microgaming",
+"Stars": 4,
+"NoOfVotes": 20,
+"GameLogo": "immortal.png",
+"MinBet": 5.0,
+"MaxBet": 500,
+"RiskLevel": "high",
+"HashKey": "key789"
+}
