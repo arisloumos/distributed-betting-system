@@ -14,20 +14,35 @@ public class MasterNode {
     private static Map<String, Double> playerBalances = new HashMap<>();
 
     public static void main(String[] args) {
-        // ΔΥΝΑΜΙΚΗ ΦΟΡΤΩΣΗ WORKERS ΑΠΟ ΑΡΧΕΙΟ
+        // 1. Δυναμική Φόρτωση Workers από το αρχείο workers.conf
         try {
-            List<String> lines = Files.readAllLines(Paths.get("workers.conf"));
+            // Χρησιμοποιούμε τη Files.readAllLines για να διαβάσουμε το config
+            java.util.List<String> lines = java.nio.file.Files.readAllLines(java.nio.file.Paths.get("workers.conf"));
             for (String line : lines) {
+                if (line.trim().isEmpty()) continue; // Αγνοούμε κενές γραμμές
                 String[] parts = line.split(":");
-                workers.add(new WorkerInfo(parts[0], Integer.parseInt(parts[1])));
+                workers.add(new WorkerInfo(parts[0].trim(), Integer.parseInt(parts[1].trim())));
             }
             System.out.println("Loaded " + workers.size() + " workers from config.");
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.err.println("Could not load workers.conf. Using default localhost:8001");
             workers.add(new WorkerInfo("localhost", 8001));
         }
 
-        System.out.println("Master started on " + MASTER_PORT);
+        // 2. Εκκίνηση του Server - ΑΥΤΟ ΤΟ ΚΟΜΜΑΤΙ ΚΡΑΤΑΕΙ ΤΟΝ SERVER ΖΩΝΤΑΝΟ
+        System.out.println("Master started on port " + MASTER_PORT);
+
+        try (ServerSocket serverSocket = new ServerSocket(MASTER_PORT)) {
+            while (true) {
+                // Ο server σταματάει εδώ και περιμένει σύνδεση (accept)
+                Socket clientSocket = serverSocket.accept();
+                // Μόλις συνδεθεί κάποιος, ξεκινάει νέο Thread
+                new Thread(new ClientHandler(clientSocket)).start();
+            }
+        } catch (IOException e) {
+            System.err.println("Master Server Error: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     static class ClientHandler implements Runnable {
