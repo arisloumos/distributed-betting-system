@@ -1,12 +1,14 @@
 package Manager;
-
 import java.io.*;
 import java.net.*;
 import java.nio.file.*;
 import java.util.*;
 import Common.Game;
+import Common.Config;
 
 public class ManagerApp {
+    private static final String MASTER_IP = Config.get("MASTER_IP", "localhost");
+    private static final int MASTER_PORT = Config.getInt("MASTER_PORT", 1234);
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         System.out.println("--- Manager Console ---");
@@ -14,7 +16,7 @@ public class ManagerApp {
         System.out.print("Choice: ");
         int choice = Integer.parseInt(sc.nextLine());
 
-        try (Socket s = new Socket("localhost", 1234);
+        try (Socket s = new Socket(MASTER_IP, MASTER_PORT);
              ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
              ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
 

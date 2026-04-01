@@ -7,6 +7,8 @@ import Common.*;
 public class DummyPlayer {
     private static Scanner sc = new Scanner(System.in);
     private static String pId;
+    private static final String MASTER_IP = Config.get("MASTER_IP", "localhost");
+    private static final int MASTER_PORT = Config.getInt("MASTER_PORT", 1234);
 
     public static void main(String[] args) {
         System.out.print("Enter Player ID: ");
@@ -37,7 +39,7 @@ public class DummyPlayer {
     private static void addBalance() {
         System.out.print("Enter amount of tokens to add: ");
         double amount = Double.parseDouble(sc.nextLine());
-        try (Socket s = new Socket("localhost", 1234);
+        try (Socket s = new Socket(MASTER_IP, MASTER_PORT);
              ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
              ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
             
@@ -50,7 +52,7 @@ public class DummyPlayer {
     }
 
     private static void viewBalance() {
-        try (Socket s = new Socket("localhost", 1234);
+        try (Socket s = new Socket(MASTER_IP, MASTER_PORT);
             ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
             ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
             out.writeObject("GET_BALANCE");
@@ -74,7 +76,7 @@ public class DummyPlayer {
         String risk = sc.nextLine();
         if(risk.isEmpty()) risk = null;
 
-        try (Socket s = new Socket("localhost", 1234);
+        try (Socket s = new Socket(MASTER_IP, MASTER_PORT);
              ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
              ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
 
@@ -101,7 +103,7 @@ public class DummyPlayer {
     }
 
     private static void playGame(String pId, String gName, double amt) {
-        try (Socket s = new Socket("localhost", 1234);
+        try (Socket s = new Socket(MASTER_IP, MASTER_PORT);
              ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
              ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
             out.writeObject("PLAY");
@@ -112,7 +114,7 @@ public class DummyPlayer {
             System.out.print("Rate (1-5) or Enter to skip: ");
             String rIn = sc.nextLine();
             if (!rIn.isEmpty()) {
-                try (Socket s2 = new Socket("localhost", 1234);
+                try (Socket s2 = new Socket(MASTER_IP, MASTER_PORT);
                      ObjectOutputStream out2 = new ObjectOutputStream(s2.getOutputStream());
                      ObjectInputStream in2 = new ObjectInputStream(s2.getInputStream())) {
                     out2.writeObject("RATE_GAME");

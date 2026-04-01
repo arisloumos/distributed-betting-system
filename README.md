@@ -71,8 +71,6 @@ localhost:8002
 *   **Manager:** `java Manager.ManagerApp`
 *   **Player:** `java Player.DummyPlayer`
 
- **Player:** `java Player.DummyPlayer`
-
 ---
 
 ## 📊 Η Διαδικασία MapReduce (Stats Flow)
