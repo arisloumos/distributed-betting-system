@@ -1,0 +1,11 @@
+{
+"GameName":"QuickBetSpin",
+"ProviderName": "N1Casino",
+"Stars": 3,
+"NoOfVotes": 12,
+"GameLogo": "quickbet.png",
+"MinBet": 0.2,
+"MaxBet": 100,
+"RiskLevel": "low",
+"HashKey": "qb101"
+}

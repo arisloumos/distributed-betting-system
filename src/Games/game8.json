@@ -1,0 +1,11 @@
+{
+"GameName":"SpinTheOdds",
+"ProviderName": "Stoiximan",
+"Stars": 4,
+"NoOfVotes": 15,
+"GameLogo": "spintheodds.png",
+"MinBet": 2.0,
+"MaxBet": 300,
+"RiskLevel": "medium",
+"HashKey": "sto505"
+}

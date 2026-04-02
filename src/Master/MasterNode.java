@@ -7,45 +7,54 @@ import java.nio.file.Paths;
 import java.util.*;
 import Common.*;
 
+/**
+ * Master Node: Ο κεντρικός συντονιστής του συστήματος.
+ * Διαχειρίζεται τη δρομολόγηση των παιχνιδιών, τα υπόλοιπα των παικτών
+ * και τον συντονισμό των MapReduce εργασιών.
+ */
 public class MasterNode {
-    private static final int MASTER_PORT = 1234;
+    private static final int MASTER_PORT = Config.getInt("MASTER_PORT", 1234);
     private static final String REDUCER_IP = Config.get("REDUCER_IP", "localhost");
     private static final int REDUCER_PORT = Config.getInt("REDUCER_PORT", 4444);
+    
+    // Λίστα με τους διαθέσιμους Workers (φορτώνεται από το config)
     private static List<WorkerInfo> workers = new ArrayList<>();
+    
+    // Shared State: Τα υπόλοιπα των παικτών (Tokens)
     private static Map<String, Double> playerBalances = new HashMap<>();
 
     public static void main(String[] args) {
         // 1. Δυναμική Φόρτωση Workers από το αρχείο workers.conf
         try {
-            // Χρησιμοποιούμε τη Files.readAllLines για να διαβάσουμε το config
-            java.util.List<String> lines = java.nio.file.Files.readAllLines(java.nio.file.Paths.get("workers.conf"));
+            java.util.List<String> lines = Files.readAllLines(Paths.get("workers.conf"));
             for (String line : lines) {
-                if (line.trim().isEmpty()) continue; // Αγνοούμε κενές γραμμές
+                if (line.trim().isEmpty()) continue;
                 String[] parts = line.split(":");
                 workers.add(new WorkerInfo(parts[0].trim(), Integer.parseInt(parts[1].trim())));
             }
-            System.out.println("Loaded " + workers.size() + " workers from config.");
+            System.out.println("[MASTER] Loaded " + workers.size() + " workers from configuration.");
         } catch (Exception e) {
-            System.err.println("Could not load workers.conf. Using default localhost:8001");
-            workers.add(new WorkerInfo("localhost", 8001));
+            System.err.println("[MASTER] Critical Error: Could not load workers.conf.");
+            return;
         }
 
-        // 2. Εκκίνηση του Server - ΑΥΤΟ ΤΟ ΚΟΜΜΑΤΙ ΚΡΑΤΑΕΙ ΤΟΝ SERVER ΖΩΝΤΑΝΟ
-        System.out.println("Master started on port " + MASTER_PORT);
+        System.out.println("[MASTER] Server started on port " + MASTER_PORT);
 
+        // 2. Κύριος βρόχος αποδοχής συνδέσεων (Clients & Manager)
         try (ServerSocket serverSocket = new ServerSocket(MASTER_PORT)) {
             while (true) {
-                // Ο server σταματάει εδώ και περιμένει σύνδεση (accept)
                 Socket clientSocket = serverSocket.accept();
-                // Μόλις συνδεθεί κάποιος, ξεκινάει νέο Thread
+                // Κάθε σύνδεση εξυπηρετείται σε νέο Thread (Πολυνηματικότητα)
                 new Thread(new ClientHandler(clientSocket)).start();
             }
         } catch (IOException e) {
-            System.err.println("Master Server Error: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("[MASTER] Server Error: " + e.getMessage());
         }
     }
 
+    /**
+     * ClientHandler: Διαχειρίζεται το πρωτόκολλο επικοινωνίας για κάθε αίτημα.
+     */
     static class ClientHandler implements Runnable {
         private Socket s;
         public ClientHandler(Socket s) { this.s = s; }
@@ -57,134 +66,139 @@ public class MasterNode {
                  ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
                 
                 String type = (String) in.readObject();
-                System.out.println("[MASTER] Processing: " + type);
+                System.out.println("[MASTER] Request received: " + type);
 
+                // --- ΔΙΑΧΕΙΡΙΣΗ ΠΑΙΧΝΙΔΙΩΝ (Manager) ---
                 if (type.equals("ADD_GAME")) {
                     Game g = (Game) in.readObject();
+                    // Επιλογή Worker βάσει Hash του ονόματος (Routing Strategy)
                     int idx = Math.abs(g.gameName.hashCode()) % workers.size();
                     
-                    // Fix Γ3: Έλεγχος πριν την προσθήκη
                     if (checkIfGameExists(workers.get(idx), g.gameName)) {
-                        out.writeUTF("REJECTED: A game with name '" + g.gameName + "' already exists.");
+                        out.writeUTF("REJECTED: Game already exists.");
                     } else {
+                        System.out.println("[MASTER] Routing ADD_GAME to Worker " + idx);
                         out.writeUTF(forwardAdd(workers.get(idx), g));
                     }
                 }
-                // ΕΔΩ ΕΙΝΑΙ Η ΜΕΓΑΛΗ ΑΛΛΑΓΗ: Μία μέθοδος για όλα τα Updates
                 else if (type.equals("REMOVE_GAME") || type.equals("EDIT_GAME") || type.equals("RATE_GAME")) {
                     String name = in.readUTF();
                     int idx = Math.abs(name.hashCode()) % workers.size();
                     out.writeUTF(forwardUpdateToWorker(workers.get(idx), type, name, in));
                 }
+
+                // --- ΑΝΑΖΗΤΗΣΗ (Player) ---
                 else if (type.equals("SEARCH")) {
                     Filters f = (Filters) in.readObject();
                     List<Game> allResults = new ArrayList<>();
+                    // Συγκέντρωση αποτελεσμάτων από όλους τους Workers (Scatter-Gather)
                     for (WorkerInfo w : workers) {
                         allResults.addAll(forwardSearch(w, f));
                     }
                     out.writeObject(allResults);
                 }
-                else if (type.equals("STATS")) {
-                    try (Socket s = new Socket(REDUCER_IP, REDUCER_PORT);
-                        ObjectOutputStream outR = new ObjectOutputStream(s.getOutputStream())) {
-                        outR.writeObject("SET_WORKER_COUNT");
-                        outR.writeInt(workers.size()); // Δυναμικός αριθμός από το workers.conf
-                        outR.flush();
-                    } catch (Exception e) { e.printStackTrace(); }
 
+                // --- MAPREDUCE ΣΤΑΤΙΣΤΙΚΑ (Manager) ---
+                else if (type.equals("STATS")) {
+                    System.out.println("[MASTER] Initiating MapReduce Job...");
+                    
+                    // Βήμα 1: Ενημέρωση Reducer για το πλήθος των Workers
+                    try (Socket sR = new Socket(REDUCER_IP, REDUCER_PORT);
+                         ObjectOutputStream outR = new ObjectOutputStream(sR.getOutputStream())) {
+                        outR.writeObject("SET_WORKER_COUNT");
+                        outR.writeInt(workers.size());
+                        outR.flush();
+                    } catch (Exception e) { System.err.println("[MASTER] Reducer Error: " + e.getMessage()); }
+
+                    // Βήμα 2: Καθαρισμός παλιών στατιστικών
                     callReducer("RESET_STATS");
+
+                    // Βήμα 3: Ειδοποίηση Workers να στείλουν δεδομένα (Map Phase)
                     for (WorkerInfo w : workers) {
                         forwardSimpleCmd(w, "PUSH_TO_REDUCER"); 
                     }
 
+                    // Βήμα 4: Λήψη τελικών αποτελεσμάτων (Reduce Phase)
                     Map<String, Object> results = getResultsFromReducer();
                     out.writeObject(results.get("providers"));
                     out.writeObject(results.get("players"));
+                    System.out.println("[MASTER] MapReduce Job completed.");
                 }
+
+                // --- ΔΙΑΔΙΚΑΣΙΑ ΠΟΝΤΑΡΙΣΜΑΤΟΣ (Player) ---
                 else if (type.equals("PLAY")) {
                     String pId = in.readUTF();
                     String gName = in.readUTF();
                     double amt = in.readDouble();
 
-                    // Fix Γ2: Έλεγχος εγκυρότητας ποσού
                     if (amt <= 0) {
-                        out.writeUTF("REJECTED: Bet amount must be positive.");
+                        out.writeUTF("REJECTED: Invalid amount.");
                     } else {
                         synchronized(playerBalances) {
                             double currentBal = playerBalances.getOrDefault(pId, 0.0);
                             
                             if (currentBal < amt) {
-                                out.writeUTF("REJECTED: Insufficient Balance. Current: " + currentBal + " tokens.");
+                                System.out.println("[MASTER] Play rejected: Insufficient balance for " + pId);
+                                out.writeUTF("REJECTED: Insufficient Balance.");
                             } else {
-                                // 1. Προσωρινή αφαίρεση του πονταρίσματος
+                                // 1. Δέσμευση ποσού (Atomic-like transaction)
                                 playerBalances.put(pId, currentBal - amt);
                                 
                                 int idx = Math.abs(gName.hashCode()) % workers.size();
+                                System.out.println("[MASTER] Calling Worker for bet processing...");
                                 
-                                // 2. Κλήση του Worker
+                                // 2. Κλήση του Worker για τον υπολογισμό του κέρδους
                                 double winAmount = forwardPlayToWorkerNumeric(workers.get(idx), pId, gName, amt);
                                 
-                                // 3. Διαχείριση αποτελέσματος
                                 if (winAmount >= 0) {
-                                    // Επιτυχία: Προσθήκη κέρδους (αν έχασε, το winAmount είναι 0)
+                                    // 3α. Επιτυχία: Ενημέρωση υπολοίπου με το κέρδος
                                     playerBalances.put(pId, playerBalances.get(pId) + winAmount);
-                                    
-                                    String resultMsg;
-                                    if (winAmount > amt) resultMsg = "WIN " + String.format("%.2f", winAmount);
-                                    else if (winAmount == amt) resultMsg = "DRAW";
-                                    else resultMsg = "LOSS";
-                                    
-                                    out.writeUTF(resultMsg + " | New Balance: " + String.format("%.2f", playerBalances.get(pId)));
+                                    String res = (winAmount > amt) ? "WIN" : (winAmount == amt ? "DRAW" : "LOSS");
+                                    out.writeUTF(res + " | New Balance: " + String.format("%.2f", playerBalances.get(pId)));
                                 } else {
-                                    // Fix Γ1: Σφάλμα στον Worker ή SRG (winAmount < 0)
-                                    // Επιστροφή χρημάτων στον παίκτη (Refund)
+                                    // 3β. Σφάλμα (π.χ. Worker down): Επιστροφή χρημάτων (Refund)
                                     playerBalances.put(pId, playerBalances.get(pId) + amt);
-                                    
-                                    String errorType = (winAmount == -1.0) ? "Game not found" : 
-                                                      (winAmount == -2.0) ? "Security/Hash Error" : "Server Error";
-                                    out.writeUTF("ERROR: " + errorType + ". Your balance was restored.");
+                                    System.out.println("[MASTER] Refund issued to " + pId + " due to Worker error.");
+                                    out.writeUTF("ERROR: Transaction failed. Refunded.");
                                 }
                             }
                         }
                     }
                 }
+
+                // --- ΔΙΑΧΕΙΡΙΣΗ ΥΠΟΛΟΙΠΟΥ ---
                 else if (type.equals("ADD_BALANCE")) {
                     String pId = in.readUTF();
                     double amount = in.readDouble();
                     synchronized(playerBalances) {
                         playerBalances.put(pId, playerBalances.getOrDefault(pId, 0.0) + amount);
                     }
-                    out.writeUTF("New Balance for " + pId + ": " + playerBalances.get(pId) + " tokens.");
+                    out.writeUTF("Balance updated. Current: " + playerBalances.get(pId));
                 }
                 else if (type.equals("GET_BALANCE")) {
                     String pId = in.readUTF();
-                    out.writeUTF("Your current balance: " + playerBalances.getOrDefault(pId, 0.0) + " tokens.");
+                    out.writeUTF("Current balance: " + playerBalances.getOrDefault(pId, 0.0));
                 }
 
                 out.flush();
-            } catch (Exception e) { e.printStackTrace(); }
+            } catch (Exception e) { 
+                System.err.println("[MASTER] Client Handler Error: " + e.getMessage());
+            }
         }
 
-        // Η "έξυπνη" μέθοδος που προωθεί τα πάντα σωστά
+        // --- HELPER METHODS ΓΙΑ ΕΠΙΚΟΙΝΩΝΙΑ ΜΕ WORKERS ---
+
         private String forwardUpdateToWorker(WorkerInfo w, String type, String name, ObjectInputStream clientIn) {
             try (Socket sock = new Socket(w.host, w.port);
                  ObjectOutputStream outW = new ObjectOutputStream(sock.getOutputStream());
                  ObjectInputStream inW = new ObjectInputStream(sock.getInputStream())) {
-                
                 outW.writeObject(type);
                 outW.writeUTF(name);
-                
-                if (type.equals("EDIT_GAME")) {
-                    String newRisk = clientIn.readUTF();
-                    outW.writeUTF(newRisk);
-                } else if (type.equals("RATE_GAME")) {
-                    int stars = clientIn.readInt();
-                    outW.writeInt(stars);
-                }
-                
+                if (type.equals("EDIT_GAME")) outW.writeUTF(clientIn.readUTF());
+                else if (type.equals("RATE_GAME")) outW.writeInt(clientIn.readInt());
                 outW.flush();
                 return inW.readUTF();
-            } catch (Exception e) { return "Worker Error"; }
+            } catch (Exception e) { return "Worker Unreachable"; }
         }
 
         private String forwardAdd(WorkerInfo w, Game g) {
@@ -195,28 +209,19 @@ public class MasterNode {
                 outW.writeObject(g);
                 outW.flush();
                 return inW.readUTF();
-            } catch (Exception e) { return "Worker Error"; }
+            } catch (Exception e) { return "Worker Unreachable"; }
         }
 
         private boolean checkIfGameExists(WorkerInfo w, String gameName) {
             try (Socket sock = new Socket(w.host, w.port);
                  ObjectOutputStream outW = new ObjectOutputStream(sock.getOutputStream());
                  ObjectInputStream inW = new ObjectInputStream(sock.getInputStream())) {
-                
-                // Στέλνουμε ένα SEARCH χωρίς φίλτρα για να πάρουμε όλα τα παιχνίδια του Worker
                 outW.writeObject("SEARCH");
                 outW.writeObject(new Filters(0, null, null));
                 outW.flush();
-                
                 List<Game> games = (List<Game>) inW.readObject();
-                for (Game g : games) {
-                    if (g.gameName.equalsIgnoreCase(gameName)) {
-                        return true; // Το παιχνίδι βρέθηκε
-                    }
-                }
-            } catch (Exception e) {
-                return false; // Σε περίπτωση σφάλματος επικοινωνίας, υποθέτουμε ότι δεν υπάρχει
-            }
+                for (Game g : games) if (g.gameName.equalsIgnoreCase(gameName)) return true;
+            } catch (Exception e) { return false; }
             return false;
         }
 
@@ -237,7 +242,7 @@ public class MasterNode {
                  ObjectInputStream inW = new ObjectInputStream(sock.getInputStream())) {
                 outW.writeObject(cmd);
                 outW.flush();
-                inW.readUTF(); // Περιμένει το "DATA_SENT" για συγχρονισμό
+                inW.readUTF(); // Συγχρονισμός: Περιμένει επιβεβαίωση
             } catch (Exception e) {}
         }
 
@@ -245,20 +250,15 @@ public class MasterNode {
             try (Socket sock = new Socket(w.host, w.port);
                 ObjectOutputStream outW = new ObjectOutputStream(sock.getOutputStream());
                 ObjectInputStream inW = new ObjectInputStream(sock.getInputStream())) {
-                
                 outW.writeObject("PLAY");
-                outW.writeUTF(pId); 
-                outW.writeUTF(gName); 
-                outW.writeDouble(amt);
+                outW.writeUTF(pId); outW.writeUTF(gName); outW.writeDouble(amt);
                 outW.flush();
-                
-                // Διαβάζουμε double από τον Worker
                 return inW.readDouble(); 
-            } catch (Exception e) { 
-                return -3.0; // Error code ως double
-            }
+            } catch (Exception e) { return -3.0; }
         }
     }
+
+    // --- ΜΕΘΟΔΟΙ ΕΠΙΚΟΙΝΩΝΙΑΣ ΜΕ REDUCER ---
 
     private static void callReducer(String cmd) {
         try (Socket s = new Socket(REDUCER_IP, REDUCER_PORT);

@@ -1,0 +1,11 @@
+{
+"GameName":"OddsOfFortune",
+"ProviderName": "Stoiximan",
+"Stars": 4,
+"NoOfVotes": 18,
+"GameLogo": "odds.png",
+"MinBet": 1.5,
+"MaxBet": 200,
+"RiskLevel": "medium",
+"HashKey": "odds202"
+}

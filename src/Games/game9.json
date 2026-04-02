@@ -1,0 +1,11 @@
+{
+"GameName":"JackpotKings",
+"ProviderName": "NoviBet",
+"Stars": 5,
+"NoOfVotes": 11,
+"GameLogo": "jackpotkings.png",
+"MinBet": 7.5,
+"MaxBet": 600,
+"RiskLevel": "high",
+"HashKey": "jk606"
+}

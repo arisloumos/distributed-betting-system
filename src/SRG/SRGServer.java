@@ -4,32 +4,46 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import Common.HashUtils;
+import Common.Config;
 
+/**
+ * SRG (Secure Random Generator) Server.
+ * Υλοποιεί έναν κεντρικό παραγωγό τυχαίων αριθμών που εξυπηρετεί τους Workers.
+ * Χρησιμοποιεί το μοντέλο Producer-Consumer με ενδιάμεσο Buffer.
+ */
 public class SRGServer {
-    private static final int PORT = 5555; // Το port που ακούει ο SRG
-    private static final int BUFFER_SIZE = 50; // Μέγεθος του Buffer
+    // Φόρτωση ρυθμίσεων από το system.conf
+    private static final int PORT = Config.getInt("SRG_PORT", 5555);
+    private static final int BUFFER_SIZE = 50; 
+    
+    // Ο κοινόχρηστος Buffer για τους τυχαίους αριθμούς
     private static final LinkedList<Integer> buffer = new LinkedList<>();
 
     public static void main(String[] args) {
-        // 1. Ξεκινάμε το Producer Thread (παράγει αριθμούς)
+        // Εκκίνηση του Producer Thread που γεμίζει τον buffer στο παρασκήνιο
         Thread producer = new Thread(new Producer());
+        producer.setDaemon(true); // Τερματίζει αυτόματα αν κλείσει ο server
         producer.start();
 
-        System.out.println("SRG Server started on port " + PORT);
+        System.out.println("[SRG] Server started on port " + PORT);
+        System.out.println("[SRG] Buffer size set to: " + BUFFER_SIZE);
 
-        // 2. Ξεκινάμε τον TCP Server για να ακούει τους Workers
+        // Κύριος βρόχος αποδοχής συνδέσεων από Workers
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             while (true) {
                 Socket workerSocket = serverSocket.accept();
-                // Κάθε Worker εξυπηρετείται σε δικό του Thread (Πολυνηματικότητα)
+                // Πολυνηματική εξυπηρέτηση κάθε αιτήματος
                 new Thread(new WorkerHandler(workerSocket)).start();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("[SRG] Server Error: " + e.getMessage());
         }
     }
 
-    // --- PRODUCER: Γεμίζει το buffer με τυχαίους αριθμούς ---
+    /**
+     * Producer: Παράγει συνεχώς τυχαίους αριθμούς.
+     * Χρησιμοποιεί wait() αν ο buffer γεμίσει και notifyAll() όταν προσθέτει στοιχεία.
+     */
     static class Producer implements Runnable {
         private Random random = new Random();
 
@@ -38,27 +52,30 @@ public class SRGServer {
             try {
                 while (true) {
                     synchronized (buffer) {
-                        // Αν ο buffer είναι γεμάτος, περίμενε (wait)
+                        // Αν ο buffer είναι γεμάτος, το thread μπαίνει σε κατάσταση αναμονής
                         while (buffer.size() >= BUFFER_SIZE) {
                             buffer.wait();
                         }
                         
-                        int num = random.nextInt(1000000); // Τυχαίος αριθμός
+                        int num = random.nextInt(1000000); 
                         buffer.add(num);
-                        // System.out.println("Produced: " + num); // Για debug
                         
-                        // Ειδοποίησε τους καταναλωτές ότι υπάρχει αριθμός
+                        // Ειδοποίηση των καταναλωτών (WorkerHandlers) ότι υπάρχει διαθέσιμος αριθμός
                         buffer.notifyAll();
                     }
-                    Thread.sleep(100); // Μικρή καθυστέρηση για να μην τρώει όλη τη CPU
+                    // Μικρή παύση για εξοικονόμηση πόρων συστήματος
+                    Thread.sleep(50); 
                 }
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                System.err.println("[SRG] Producer interrupted.");
             }
         }
     }
 
-    // --- WORKER HANDLER: Στέλνει αριθμούς στους Workers ---
+    /**
+     * WorkerHandler: Εξυπηρετεί το αίτημα ενός Worker για τυχαίο αριθμό.
+     * Καταναλώνει έναν αριθμό από τον buffer και τον στέλνει μαζί με το SHA-256 hash.
+     */
     static class WorkerHandler implements Runnable {
         private Socket socket;
 
@@ -72,31 +89,36 @@ public class SRGServer {
                 DataInputStream in = new DataInputStream(socket.getInputStream());
                 DataOutputStream out = new DataOutputStream(socket.getOutputStream())
             ) {
-                // Ο Worker στέλνει το Secret S (hashKey) του παιχνιδιού
+                // Λήψη του Secret S από τον Worker για το hashing
                 String secretS = in.readUTF();
-                System.out.println("[SRG] Worker requested a random number. Generating and hashing...");
                 
                 int randomNumber;
                 synchronized (buffer) {
-                    // Αν ο buffer είναι άδειος, περίμενε (wait)
+                    // Αν ο buffer είναι άδειος, το thread περιμένει τον Producer
                     while (buffer.isEmpty()) {
+                        System.out.println("[SRG] Buffer empty, waiting for producer...");
                         buffer.wait();
                     }
+                    // Λήψη του πρώτου διαθέσιμου αριθμού (FIFO)
                     randomNumber = buffer.removeFirst();
-                    // Ειδοποίησε τον Producer ότι άδειασε θέση
+                    
+                    // Ειδοποίηση του Producer ότι άδειασε θέση στον buffer
                     buffer.notifyAll();
                 }
 
-                // Υπολογισμός Hash: SHA256(αριθμός + secret)
+                // Δημιουργία ασφαλούς Hash: SHA256(αριθμός + secret)
                 String hash = HashUtils.sha256(randomNumber + secretS);
 
-                // Αποστολή στον Worker: Πρώτα ο αριθμός, μετά το hash
+                // Αποστολή δεδομένων στον Worker
                 out.writeInt(randomNumber);
                 out.writeUTF(hash);
+                out.flush();
+                
+                System.out.println("[SRG] Dispatched number: " + randomNumber + " (Hash generated)");
                 
                 socket.close();
             } catch (Exception e) {
-                e.printStackTrace();
+                System.err.println("[SRG] Error handling worker request: " + e.getMessage());
             }
         }
     }
