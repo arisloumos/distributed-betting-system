@@ -29,6 +29,22 @@
 
 ---
 
+## 🚀 Λειτουργίες (Features)
+
+### 👨‍💼 Διαχείριση (Manager)
+*   **Add Game:** Δυναμική προσθήκη παιχνιδιών μέσω **Manual JSON Parsing** (χωρίς εξωτερικές βιβλιοθήκες).
+*   **Edit Risk:** Αλλαγή επιπέδου ρίσκου (Low, Medium, High) με αυτόματο επανυπολογισμό του Jackpot.
+*   **Remove Game:** Απενεργοποίηση παιχνιδιού (**Soft Delete**) ώστε να μην εμφανίζεται στους παίκτες αλλά να διατηρούνται τα ιστορικά στατιστικά.
+*   **Real-time Analytics:** Προβολή κερδών/ζημιών μέσω MapReduce με ανάλυση: `Provider -> Game -> Total P/L` και `Player -> Total P/L`.
+
+### 🕹 Εμπειρία Παίκτη (Player)
+*   **Token System:** Πλήρες σύστημα Balance. Έλεγχος υπολοίπου πριν από κάθε ποντάρισμα και αυτόματη ενημέρωση μετά το αποτέλεσμα.
+*   **Advanced Filtering:** Αναζήτηση παιχνιδιών με συνδυαστικά φίλτρα (Stars, Bet Category $, Risk Level).
+*   **Rating System:** Δυνατότητα βαθμολογίας (1-5 αστέρια) με δυναμική ενημέρωση του μέσου όρου (double precision) και του πλήθους των ψήφων.
+*   **Secure Betting:** Κάθε ποντάρισμα επαληθεύεται με κρυπτογραφικό hash για την αποτροπή απάτης στη μεταφορά του τυχαίου αριθμού.
+
+---
+
 ## 🛠 Οδηγίες Εκτέλεσης (Setup)
 
 ### 1. Ρύθμιση Δικτύου (Configuration)
@@ -52,6 +68,7 @@ javac Common/*.java SRG/*.java Reducer/*.java Worker/*.java Master/*.java Manage
 5.  **Clients:** `java Manager.ManagerApp` ή `java Player.DummyPlayer`
 
 ---
+
 ## 📂 Δομή Φακέλων (Project Structure)
 
 Το project είναι οργανωμένο σε Java Packages:
