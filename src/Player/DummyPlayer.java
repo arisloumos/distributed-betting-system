@@ -19,7 +19,7 @@ public class DummyPlayer {
     private static final int MASTER_PORT = Config.getInt("MASTER_PORT", 1234);
 
     public static void main(String[] args) {
-        System.out.println("--- Online Gaming Platform: Player Console ---");
+        System.out.println("--- Online Betting Platform: Player Console ---");
         System.out.print("Enter your Player ID: ");
         pId = sc.nextLine();
         if(pId.isEmpty()) pId = "Guest_" + new Random().nextInt(1000);

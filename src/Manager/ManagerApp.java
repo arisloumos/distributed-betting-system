@@ -19,7 +19,7 @@ public class ManagerApp {
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
-        System.out.println("--- Online Gaming Platform: Manager Console ---");
+        System.out.println("--- Online Betting Platform: Manager Console ---");
         System.out.println("1. Add New Game (JSON File)");
         System.out.println("2. Remove Existing Game");
         System.out.println("3. Edit Game Risk Level");
