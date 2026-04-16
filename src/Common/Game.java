@@ -65,7 +65,7 @@ public class Game implements Serializable {
 
     @Override
     public String toString() {
-        return String.format("Game: %-15s [%s] | Rating: %.1f/5 (%d votes) | Risk: %-6s | Jackpot: x%.0f", 
-                gameName, betCategory, stars, noOfVotes, riskLevel, jackpot);
+        return String.format("Game: %-15s [%s] | Limits: %.2f - %.2f | Rating: %.1f/5 | Risk: %-6s | Jackpot: x%.0f", 
+                gameName, betCategory, minBet, maxBet, stars, riskLevel, jackpot);
     }
 }

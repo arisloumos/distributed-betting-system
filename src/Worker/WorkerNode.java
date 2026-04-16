@@ -189,18 +189,23 @@ public class WorkerNode {
         
         if (game == null || !game.isActive) return -1.0;
 
+        // Έλεγχος ορίων πονταρίσματος
+        if (betAmount < game.minBet || betAmount > game.maxBet) {
+            System.out.println("[WORKER] Rejected bet: " + betAmount + " is out of limits [" + game.minBet + " - " + game.maxBet + "]");
+            return -4.0; // Επιστρέφουμε έναν νέο κωδικό σφάλματος
+        }
+
         // Επικοινωνία με τον Secure Random Generator (SRG) μέσω TCP
         System.out.println("[WORKER] Requesting secure random number from SRG...");
         try (Socket srgSocket = new Socket(SRG_IP, SRG_PORT);
-             DataOutputStream out = new DataOutputStream(srgSocket.getOutputStream());
-             DataInputStream in = new DataInputStream(srgSocket.getInputStream())) {
+            DataOutputStream out = new DataOutputStream(srgSocket.getOutputStream());
+            DataInputStream in = new DataInputStream(srgSocket.getInputStream())) {
             
             out.writeUTF(game.hashKey); // Αποστολή του Secret S
             out.flush();
             
             int num = in.readInt(); 
             String receivedHash = in.readUTF();
-            
             // Επαλήθευση ακεραιότητας (Security Check)
             if (!HashUtils.sha256(num + game.hashKey).equals(receivedHash)) {
                 System.err.println("[SECURITY] Hash mismatch! Potential tampering detected.");
@@ -208,14 +213,12 @@ public class WorkerNode {
             }
 
             System.out.println("[WORKER] Received verified number: " + num);
-
-            double win = 0;
             // Έλεγχος για Jackpot (υπόλοιπο 100 == 0)
+            double win = 0;
             if (num % 100 == 0) {
                 win = betAmount * game.jackpot;
                 System.out.println("[WORKER] JACKPOT! Player won " + win);
             } else {
-                // Υπολογισμός βάσει πίνακα ρίσκου (υπόλοιπο 10)
                 double[] table = game.riskLevel.equals("low") ? LOW_RISK : 
                                 (game.riskLevel.equals("medium") ? MEDIUM_RISK : HIGH_RISK);
                 win = betAmount * table[num % 10];

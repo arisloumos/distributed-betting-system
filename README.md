@@ -48,12 +48,36 @@
 ## 🛠 Οδηγίες Εκτέλεσης (Setup)
 
 ### 1. Ρύθμιση Δικτύου (Configuration)
-Επεξεργαστείτε τα αρχεία `.conf` στον κατάλογο `src`:
 
-*   **`system.conf`**: Ορίστε τις IPs των laptops που θα τρέχουν τους servers (Master, Reducer, SRG). Για τοπική εκτέλεση, χρησιμοποιήστε `localhost`.
+#### Σύνδεση Συσκευών
+Βάλτε τα laptops στο ίδιο Wi-Fi ή στο ίδιο Hotspot κινητού.
+
+#### Εύρεση IP Διευθύνσεων
+**MacOS**
+```bash
+ipconfig getifaddr en0
+```
+Παράδειγμα IP: `192.168.1.10`
+
+**Windows**
+```bash
+ipconfig
+```
+Βρείτε το πεδίο **IPv4 Address**.
+Παράδειγμα IP: `192.168.1.20`
+
+### 2. Ρύθμιση Αρχείων (`src` folder)
+
+Τα παρακάτω αρχεία πρέπει να είναι ίδια σε όλα τα laptops.
+
+*   **`system.conf`**: Ορίστε τις IPs των laptops που θα τρέχουν τους servers (Master, Reducer, SRG).
 *   **`workers.conf`**: Προσθέστε τις διευθύνσεις (IP:Port) όλων των Workers που θα συμμετέχουν.
 
+*Για τοπική εκτέλεση σε ένα laptop μπορείτε να χρησιμοποιήσετε `localhost` (default).*
+
 ### 2. Compile
+Σε κάθε laptop, ανοίξτε terminal μέσα στον φάκελο `src` και εκτελέστε:
+
 ```bash
 javac Common/*.java SRG/*.java Reducer/*.java Worker/*.java Master/*.java Manager/*.java Player/*.java
 ```

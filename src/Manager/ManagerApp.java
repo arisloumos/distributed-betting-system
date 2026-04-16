@@ -23,7 +23,7 @@ public class ManagerApp {
         System.out.println("1. Add New Game (JSON File)");
         System.out.println("2. Remove Existing Game");
         System.out.println("3. Edit Game Risk Level");
-        System.out.println("4. View Global Statistics (MapReduce)");
+        System.out.println("4. View Statistics (MapReduce)");
         System.out.print("Select an option: ");
         
         String input = sc.nextLine();
@@ -64,36 +64,68 @@ public class ManagerApp {
                 out.writeUTF(sc.nextLine());
             } 
             else if (choice == 4) {
-                // Προβολή στατιστικών (Απαιτεί MapReduce στο Backend)
-                System.out.println("[MANAGER] Requesting global statistics. This involves a MapReduce job...");
+                // Προβολή στατιστικών
+                System.out.println("[MANAGER] Requesting statistics. This involves a MapReduce job...");
                 out.writeObject("STATS");
                 out.flush();
                 
-                // Λήψη των Reduced αποτελεσμάτων
+                // Λήψη των Reduced αποτελεσμάτων από τον Master
                 Map<String, Map<String, Double>> provs = (Map<String, Map<String, Double>>) in.readObject();
                 Map<String, Double> plays = (Map<String, Double>) in.readObject();
                 
-                System.out.println("\n===========================================");
-                System.out.println("   GLOBAL STATISTICS (MAPREDUCE RESULTS)   ");
-                System.out.println("===========================================");
-                
-                // Εμφάνιση ανά Πάροχο και Παιχνίδι
-                for (String prov : provs.keySet()) {
-                    System.out.println("\nProvider: " + prov);
-                    double totalProv = 0;
-                    for (Map.Entry<String, Double> gameEntry : provs.get(prov).entrySet()) {
-                        System.out.printf("   -> %-15s: %10.2f FUN\n", gameEntry.getKey(), gameEntry.getValue());
-                        totalProv += gameEntry.getValue();
+                System.out.println("\n--- Statistics Menu ---");
+                System.out.println("a. Stats for specific Provider");
+                System.out.println("b. Stats for specific Player");
+                System.out.println("c. Global Statistics (All)");
+                System.out.print("Select sub-option: ");
+                String subChoice = sc.nextLine().toLowerCase();
+
+                if (subChoice.equals("a")) {
+                    System.out.print("Enter Provider Name: ");
+                    String targetProv = sc.nextLine();
+                    if (provs.containsKey(targetProv)) {
+                        System.out.println("\nResults for Provider: " + targetProv);
+                        double totalProv = 0;
+                        for (Map.Entry<String, Double> gameEntry : provs.get(targetProv).entrySet()) {
+                            System.out.printf("   -> %-15s: %10.2f FUN\n", gameEntry.getKey(), gameEntry.getValue());
+                            totalProv += gameEntry.getValue();
+                        }
+                        System.out.printf("   TOTAL for %-10s: %10.2f FUN\n", targetProv, totalProv);
+                    } else {
+                        System.out.println("Provider not found in statistics.");
                     }
-                    System.out.printf("   TOTAL for %-10s: %10.2f FUN\n", prov, totalProv);
+                } 
+                else if (subChoice.equals("b")) {
+                    System.out.print("Enter Player ID: ");
+                    String targetPlayer = sc.nextLine();
+                    if (plays.containsKey(targetPlayer)) {
+                        System.out.printf("\nPlayer ID: %-15s | Total Profit/Loss: %10.2f FUN\n", 
+                                          targetPlayer, plays.get(targetPlayer));
+                    } else {
+                        System.out.println("Player not found in statistics.");
+                    }
+                } 
+                else {
+                    // Global Statistics (Εμφάνιση όλων των δεδομένων)
+                    System.out.println("\n===========================================");
+                    System.out.println("   GLOBAL STATISTICS (MAPREDUCE RESULTS)   ");
+                    System.out.println("===========================================");
+                    
+                    for (String prov : provs.keySet()) {
+                        System.out.println("\nProvider: " + prov);
+                        double totalProv = 0;
+                        for (Map.Entry<String, Double> gameEntry : provs.get(prov).entrySet()) {
+                            System.out.printf("   -> %-15s: %10.2f FUN\n", gameEntry.getKey(), gameEntry.getValue());
+                            totalProv += gameEntry.getValue();
+                        }
+                        System.out.printf("   TOTAL for %-10s: %10.2f FUN\n", prov, totalProv);
+                    }
+                    
+                    System.out.println("\n--- Profits/Losses per Player ---");
+                    plays.forEach((k, v) -> System.out.printf("Player ID: %-15s | P/L: %10.2f FUN\n", k, v));
+                    System.out.println("===========================================\n");
                 }
-                
-                // Εμφάνιση ανά Παίκτη
-                System.out.println("\n--- Profits/Losses per Player ---");
-                plays.forEach((k, v) -> System.out.printf("Player ID: %-15s | P/L: %10.2f FUN\n", k, v));
-                
-                System.out.println("===========================================\n");
-                return; // Τερματισμός μετά την εμφάνιση των στατιστικών
+                return;
             }
             
             out.flush();

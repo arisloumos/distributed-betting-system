@@ -160,8 +160,16 @@ public class MasterNode {
                                 } else {
                                     // 3β. Σφάλμα (π.χ. Worker down): Επιστροφή χρημάτων (Refund)
                                     playerBalances.put(pId, playerBalances.get(pId) + amt);
-                                    System.out.println("[MASTER] Refund issued to " + pId + " due to Worker error.");
-                                    out.writeUTF("ERROR: Transaction failed. Refunded.");
+
+                                    // Κατηγοριοποίηση σφάλματος για καλύτερη ενημέρωση του παίκτη
+                                    String errorType;
+                                    if (winAmount == -1.0) errorType = "Game not found";
+                                    else if (winAmount == -2.0) errorType = "Security/Hash Error";
+                                    else if (winAmount == -4.0) errorType = "Bet amount out of game limits";
+                                    else errorType = "Server Error";
+                                    
+                                    System.out.println("[MASTER] Refund issued to " + pId + ": " + errorType);
+                                    out.writeUTF("ERROR: " + errorType + ". Your balance was restored.");
                                 }
                             }
                         }
