@@ -30,7 +30,9 @@ public class MasterNode {
             for (String line : lines) {
                 if (line.trim().isEmpty()) continue;
                 String[] parts = line.split(":");
-                workers.add(new WorkerInfo(parts[0].trim(), Integer.parseInt(parts[1].trim())));
+                String host = parts[0].trim().replace("\r", ""); // Καθαρίζει το κρυφό \r
+                int port = Integer.parseInt(parts[1].trim().replace("\r", ""));
+                workers.add(new WorkerInfo(host, port));
             }
             System.out.println("[MASTER] Loaded " + workers.size() + " workers from configuration.");
         } catch (Exception e) {
@@ -202,6 +204,7 @@ public class MasterNode {
         }
 
         private String forwardAdd(WorkerInfo w, Game g) {
+            System.out.println("[DEBUG] Master trying to connect to Worker at: " + w.host + ":" + w.port);
             try (Socket sock = new Socket(w.host, w.port);
                  ObjectOutputStream outW = new ObjectOutputStream(sock.getOutputStream());
                  ObjectInputStream inW = new ObjectInputStream(sock.getInputStream())) {

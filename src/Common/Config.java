@@ -19,10 +19,11 @@ public class Config {
             System.err.println("[CONFIG] Warning: Could not load system.conf, using defaults.");
         }
     }
-
-    // Επιστρέφει μια ρύθμιση ως String
+    
+    // Επιστρέφει μια ρύθμιση ως String, με δυνατότητα default τιμής
     public static String get(String key, String defaultValue) {
-        return props.getProperty(key, defaultValue);
+        String val = props.getProperty(key, defaultValue);
+        return (val != null) ? val.trim().replace("\r", "") : defaultValue;
     }
 
     // Επιστρέφει μια ρύθμιση ως Integer

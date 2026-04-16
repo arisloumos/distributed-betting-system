@@ -13,3 +13,6 @@
 # Temporary files
 *.log
 *.tmp
+
+# Command file
+compile.txt

@@ -144,6 +144,6 @@ public class ManagerApp {
                json.charAt(vEnd) != '}' && json.charAt(vEnd) != '\n') {
             vEnd++;
         }
-        return json.substring(vStart, vEnd).trim();
+        return json.substring(vStart, vEnd).trim().replace("\r", "");
     }
 }
