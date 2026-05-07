@@ -1,18 +1,24 @@
-# Compiled Java files
+# --- Java / Backend ---
 *.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
 
-# macOS system files
-.DS_Store
-*/.DS_Store
+# --- Android / Gradle ---
+.gradle/
+build/
+app/build/
+local.properties
+gradlew
+gradlew.bat
 
-# IDE folders
-.vscode/
+# --- Android Studio / IntelliJ ---
 .idea/
 *.iml
+*.iws
+*.ipr
 
-# Temporary files
-*.log
-*.tmp
-
-# Command file
-compile.txt
+# --- macOS ---
+.DS_Store
+*.DS_Store

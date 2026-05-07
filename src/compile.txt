@@ -1,0 +1,22 @@
+Compile:
+    find . -name "*.java" -print | xargs javac
+    find . -name "*.class" -type f -delete
+
+Run:
+    java gr.aueb.bettingclientapp.SRG.SRGServer
+
+    java gr.aueb.bettingclientapp.Reducer.ReducerNode
+    
+    java gr.aueb.bettingclientapp.Worker.WorkerNode 8001
+    
+    java gr.aueb.bettingclientapp.Worker.WorkerNode 8002
+    
+    java gr.aueb.bettingclientapp.Master.MasterNode
+
+    java gr.aueb.bettingclientapp.Manager.ManagerApp
+
+    java gr.aueb.bettingclientapp.Player.DummyPlayer
+
+OLD:
+    javac Common/*.java Master/*.java Worker/*.java Reducer/*.java SRG/*.java Manager/*.java Player/*.java
+    javac gr/aueb/bettingclientapp/Common/*.java SRG/*.java Reducer/*.java Worker/*.java Master/*.java Manager/*.java Player/*.java

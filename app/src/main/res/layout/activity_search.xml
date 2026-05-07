@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <Button android:id="@+id/btnSettings" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Settings" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button android:id="@+id/btnAddBalance" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Add Balance" />
+
+        <Button android:id="@+id/btnViewBalance" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="View Balance" />
+    </LinearLayout>
+
+    <EditText android:id="@+id/etStars" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Min Stars (0-5)" android:inputType="number" />
+
+    <Spinner android:id="@+id/spinnerBet" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" />
+
+    <Spinner android:id="@+id/spinnerRisk" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" />
+
+    <Button android:id="@+id/btnSearch" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Search Games" android:layout_marginTop="20dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvGames"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="10dp" />
+
+</LinearLayout>
