@@ -1,22 +1,22 @@
 # PART B CHECKLIST
 
 ## 🚀 Features
-- [ ] Add game logos (from JSON)
-  - [ ] Create logos & place them correctly
-  - [ ] Add them in the UI app
-- [ ] Improve search screen UI
+- [X] Add game logos (from JSON)
+  - [X] Create logos & place them correctly
+  - [X] Add them in the UI app
+- [X] Improve search screen UI
   - [ ] Filters menu button
-- [ ] Improve betting screen UI 
-  - [ ] Game name on top
-  - [ ] Live updating balance
-  - [ ] Game Info
-  - [ ] Change result notification
+- [X] Improve betting screen UI 
+  - [X] Game name on top
+  - [X] Live updating balance
+  - [X] Game Info
+  - [X] Change result notification
 - [ ] Add professional comments
 
 ## 🐛 Bugs
 - [ ] Fix worker load balancing
-- [ ] Fix infinite ratings glitch (after bet result is displayed)
-- [ ] After rating exit betting screen (also skip rating if you want)
+- [X] Fix infinite ratings glitch (after bet result is displayed)
+- [X] After rating exit betting screen (also skip rating if you want)
 
 ## 💻 Part A notes
 - [ ] srg hash map gia kathe game (den thimame ti simenei afto)
