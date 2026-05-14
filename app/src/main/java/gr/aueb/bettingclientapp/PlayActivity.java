@@ -41,7 +41,25 @@ public class PlayActivity extends AppCompatActivity {
 
         // 3. Γέμισμα του Header με τις πληροφορίες του παιχνιδιού
         tvGameTitle.setText(game.gameName);
+        // --- ΔΥΝΑΜΙΚΟ BACKGROUND ΑΝΑΛΟΓΑ ΤΟ ΠΑΙΧΝΙΔΙ ---
+        ImageView ivGameBackground = findViewById(R.id.ivGameBackground);
 
+        // 1. Παίρνουμε το όνομα του παιχνιδιού, το κάνουμε πεζά και βγάζουμε τα κενά (π.χ. "Mega Fortune" -> "megafortune")
+        String formattedGameName = game.gameName.toLowerCase().replace(" ", "");
+
+        // 2. Προσθέτουμε την κατάληξη που δώσαμε στις εικόνες μας (π.χ. "_bg")
+        String imageName = formattedGameName + "_bg";
+
+        // 3. Ζητάμε από το Android να ψάξει αν υπάρχει αρχείο με αυτό το όνομα στον φάκελο drawable
+        int resourceId = getResources().getIdentifier(imageName, "drawable", getPackageName());
+
+        if (resourceId != 0) {
+            // Αν βρέθηκε η φωτογραφία του παιχνιδιού, βάλτην!
+            ivGameBackground.setImageResource(resourceId);
+        } else {
+            // Αν δεν βρέθηκε, βάλε την προεπιλεγμένη της φίλης σου (π.χ. onebet_background)
+            ivGameBackground.setImageResource(R.drawable.onebet_background);
+        }
         String infoText = String.format("Limits: %.2f - %.2f\nRating: %.1f/5 | Risk: %s | Jackpot: x%.0f",
                 game.minBet, game.maxBet, game.stars, game.riskLevel, game.jackpot);
         tvGameInfo.setText(infoText);

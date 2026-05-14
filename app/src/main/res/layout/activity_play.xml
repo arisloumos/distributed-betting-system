@@ -1,151 +1,164 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp"
-    android:background="#0D0D0F"
-    android:gravity="center_horizontal">
+    android:background="#0D0D0F">
 
-    <!-- ========================================== -->
-    <!-- SECTION 1: HEADER                          -->
-    <!-- ========================================== -->
-    <TextView
-        android:id="@+id/tvGameTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="32sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        android:letterSpacing="0.05"
-        android:layout_marginBottom="8dp"/>
-
-    <TextView
-        android:id="@+id/tvGameInfo"
+    <!-- 1. Το Background Image (Πάντα Πίσω) -->
+    <ImageView
+        android:id="@+id/ivGameBackground"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="15sp"
-        android:textColor="#9CA3AF"
-        android:lineSpacingExtra="4dp"
-        android:textAlignment="center" />
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:alpha="0.4" /> <!-- Το alpha=0.4 κάνει την εικόνα ημιδιάφανη για να διαβάζονται τα γράμματα -->
 
-    <!-- "Ταμπλό" για το Balance -->
+    <!-- 2. Το υπάρχον UI (Πάντα Μπροστά) -->
     <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="16dp"
-        android:background="#1A1B20"
-        android:paddingHorizontal="20dp"
-        android:paddingVertical="10dp"
-        android:gravity="center">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textSize="14sp"
-            android:textColor="#9CA3AF"
-            android:textStyle="bold"/>
-
-        <TextView
-            android:id="@+id/tvLiveBalance"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:textColor="#9CFF22"
-            android:text="..." />
-    </LinearLayout>
-
-    <!-- Διαχωριστική γραμμή -->
-    <View
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#1A1B20"
-        android:layout_marginTop="24dp"
-        android:layout_marginBottom="24dp"/>
-
-    <!-- ========================================== -->
-    <!-- SECTION 2: BETTING                         -->
-    <!-- ========================================== -->
-    <LinearLayout
-        android:id="@+id/layoutBetting"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-        <EditText
-            android:id="@+id/etBet"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:hint="Enter Bet Amount"
-            android:inputType="numberDecimal"
-            android:textSize="18sp"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#9CA3AF"
-            android:backgroundTint="#9CFF22"
-            android:textAlignment="center"
-            android:layout_marginBottom="16dp"/>
-
-        <Button
-            android:id="@+id/btnPlay"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="PLACE BET"
-            android:textStyle="bold"
-            android:textSize="16sp"
-            android:backgroundTint="#9CFF22"
-            android:textColor="#050607" />
-    </LinearLayout>
-
-    <!-- ========================================== -->
-    <!-- SECTION 3: RESULT                          -->
-    <!-- ========================================== -->
-    <LinearLayout
-        android:id="@+id/layoutResult"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="vertical"
-        android:visibility="gone"
+        android:padding="24dp"
         android:gravity="center_horizontal">
 
+        <!-- ========================================== -->
+        <!-- SECTION 1: HEADER                          -->
+        <!-- ========================================== -->
         <TextView
-            android:id="@+id/tvResultMsg"
+            android:id="@+id/tvGameTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:id="@+id/tvGameInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textAlignment="center"
-            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textColor="#9CA3AF"
+            android:lineSpacingExtra="4dp"
+            android:textAlignment="center" />
+
+        <!-- "Ταμπλό" για το Balance -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp"
+            android:background="#1A1B20"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="10dp"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="14sp"
+                android:textColor="#9CA3AF"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/tvLiveBalance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#9CFF22"
+                android:text="..." />
+        </LinearLayout>
+
+        <!-- Διαχωριστική γραμμή -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#1A1B20"
+            android:layout_marginTop="24dp"
             android:layout_marginBottom="24dp"/>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Rate your experience"
-            android:textColor="#9CA3AF"
-            android:textSize="14sp"/>
-
-        <!-- Neon Green Αστεράκια! -->
-        <RatingBar
-            android:id="@+id/ratingBar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:stepSize="1"
-            android:numStars="5"
-            android:progressTint="#9CFF22"
-            android:secondaryProgressTint="#1A1B20" />
-
-        <Button
-            android:id="@+id/btnSkip"
+        <!-- ========================================== -->
+        <!-- SECTION 2: BETTING                         -->
+        <!-- ========================================== -->
+        <LinearLayout
+            android:id="@+id/layoutBetting"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:text="Skip &amp; Return"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#1A1B20"
-            android:layout_marginTop="24dp" />
-    </LinearLayout>
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-</LinearLayout>
+            <EditText
+                android:id="@+id/etBet"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:hint="Enter Bet Amount"
+                android:inputType="numberDecimal"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#9CA3AF"
+                android:backgroundTint="#9CFF22"
+                android:textAlignment="center"
+                android:layout_marginBottom="16dp"/>
+
+            <Button
+                android:id="@+id/btnPlay"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="PLACE BET"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:backgroundTint="#9CFF22"
+                android:textColor="#050607" />
+        </LinearLayout>
+
+        <!-- ========================================== -->
+        <!-- SECTION 3: RESULT                          -->
+        <!-- ========================================== -->
+        <LinearLayout
+            android:id="@+id/layoutResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:gravity="center_horizontal">
+
+            <TextView
+                android:id="@+id/tvResultMsg"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textAlignment="center"
+                android:textColor="#FFFFFF"
+                android:layout_marginBottom="24dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Rate your experience"
+                android:textColor="#9CA3AF"
+                android:textSize="14sp"/>
+
+            <RatingBar
+                android:id="@+id/ratingBar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:stepSize="1"
+                android:numStars="5"
+                android:progressTint="#9CFF22"
+                android:progressBackgroundTint="#6B7280"
+                android:secondaryProgressTint="#9CFF22" />
+
+            <Button
+                android:id="@+id/btnSkip"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:text="Skip &amp; Return"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#374151"
+                android:layout_marginTop="24dp" />
+        </LinearLayout>
+    </LinearLayout>
+</RelativeLayout>
