@@ -1,5 +1,7 @@
 package gr.aueb.bettingclientapp;
 
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.widget.*;
 import androidx.appcompat.app.AlertDialog;
@@ -9,7 +11,9 @@ import gr.aueb.bettingclientapp.Common.Game;
 import gr.aueb.bettingclientapp.network.NetworkManager;
 import java.util.List;
 import android.content.Intent;
-import androidx.recyclerview.widget.LinearLayoutManager;
+
+
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 public class SearchActivity extends AppCompatActivity {
@@ -20,6 +24,8 @@ public class SearchActivity extends AppCompatActivity {
     private Button btnSettings;
     private Button btnViewBalance;
     private Button btnAddBalance;
+
+    private Button btnFilter;
 
     private String pId;
 
@@ -40,6 +46,9 @@ public class SearchActivity extends AppCompatActivity {
         btnViewBalance.setOnClickListener(v -> viewBalance());
         btnAddBalance.setOnClickListener(v -> showAddBalanceDialog());
 
+        btnFilter = findViewById(R.id.btnFilter);
+        btnFilter.setOnClickListener(v -> showFilterDialog());
+
         // Ρύθμιση Spinners
         ArrayAdapter<String> betAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, new String[]{"Any", "$", "$$", "$$$"});
         spinnerBet.setAdapter(betAdapter);
@@ -54,38 +63,47 @@ public class SearchActivity extends AppCompatActivity {
 
 
     private void viewBalance() {
-        NetworkManager.sendGetBalanceRequest(pId, new NetworkManager.NetworkCallback<String>() {
-            @Override
-            public void onSuccess(String balance) {
-                Toast.makeText(SearchActivity.this, balance, Toast.LENGTH_LONG).show();
-            }
-            @Override
-            public void onError(Exception e) {
-                Toast.makeText(SearchActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
+        Intent intent = new Intent(SearchActivity.this, BalanceActivity.class);
+        intent.putExtra("PLAYER_ID", pId);
+        startActivity(intent);
     }
 
     private void showAddBalanceDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Add Balance");
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 35, 50, 20);
+
+        TextView title = new TextView(this);
+        title.setText("Add Balance");
+        title.setTextColor(Color.parseColor("#9CFF22"));
+        title.setTextSize(22);
+        title.setTypeface(null, Typeface.BOLD);
+        title.setPadding(0, 0, 0, 25);
 
         final EditText etAmount = new EditText(this);
         etAmount.setHint("Amount of tokens");
+        etAmount.setHintTextColor(Color.parseColor("#B8B8C8"));
+        etAmount.setTextColor(Color.WHITE);
         etAmount.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        builder.setView(etAmount);
+
+        layout.addView(title);
+        layout.addView(etAmount);
+
+        builder.setView(layout);
 
         builder.setPositiveButton("Add", (dialog, which) -> {
             String amountStr = etAmount.getText().toString();
             if (!amountStr.isEmpty()) {
                 double amount = Double.parseDouble(amountStr);
 
-                // Κλήση της νέας μεθόδου του NetworkManager
                 NetworkManager.sendBalanceRequest(pId, amount, new NetworkManager.NetworkCallback<String>() {
                     @Override
                     public void onSuccess(String result) {
                         Toast.makeText(SearchActivity.this, result, Toast.LENGTH_LONG).show();
                     }
+
                     @Override
                     public void onError(Exception e) {
                         Toast.makeText(SearchActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -93,38 +111,77 @@ public class SearchActivity extends AppCompatActivity {
                 });
             }
         });
+
         builder.setNegativeButton("Cancel", null);
-        builder.show();
+
+        AlertDialog dialog = builder.create();
+
+        dialog.setOnShowListener(d -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawableResource(R.drawable.dialog_bg);
+            }
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.parseColor("#9CFF22"));
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.parseColor("#9CFF22"));
+        });
+
+        dialog.show();
     }
 
     private void showSettingsDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Connection Settings");
 
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(50, 20, 50, 20);
+        layout.setPadding(50, 35, 50, 20);
+
+        TextView title = new TextView(this);
+        title.setText("Connection Settings");
+        title.setTextColor(Color.parseColor("#9CFF22"));
+        title.setTextSize(22);
+        title.setTypeface(null, Typeface.BOLD);
+        title.setPadding(0, 0, 0, 25);
 
         final EditText etIp = new EditText(this);
         etIp.setHint("Master IP");
-        // Εδώ θα μπορούσες να διαβάσεις την τρέχουσα IP από τα SharedPreferences
+        etIp.setHintTextColor(Color.parseColor("#B8B8C8"));
+        etIp.setTextColor(Color.WHITE);
 
         final EditText etPort = new EditText(this);
         etPort.setHint("Master Port");
+        etPort.setHintTextColor(Color.parseColor("#B8B8C8"));
+        etPort.setTextColor(Color.WHITE);
+        etPort.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
 
+        layout.addView(title);
         layout.addView(etIp);
         layout.addView(etPort);
+
         builder.setView(layout);
 
         builder.setPositiveButton("Save", (dialog, which) -> {
-            // Αποθήκευση στα SharedPreferences
             getSharedPreferences("BettingPrefs", MODE_PRIVATE).edit()
                     .putString("MASTER_IP", etIp.getText().toString())
                     .putInt("MASTER_PORT", Integer.parseInt(etPort.getText().toString()))
                     .apply();
+
             Toast.makeText(this, "Settings Saved!", Toast.LENGTH_SHORT).show();
         });
-        builder.show();
+
+        builder.setNegativeButton("Cancel", null);
+
+        AlertDialog dialog = builder.create();
+
+        dialog.setOnShowListener(d -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawableResource(R.drawable.dialog_bg);
+            }
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.parseColor("#9CFF22"));
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.parseColor("#9CFF22"));
+        });
+
+        dialog.show();
     }
 
     private void performSearch() {
@@ -157,7 +214,7 @@ public class SearchActivity extends AppCompatActivity {
 
                     // 3. Συνδέουμε τον Adapter στο RecyclerView
                     RecyclerView rvGames = findViewById(R.id.rvGames);
-                    rvGames.setLayoutManager(new LinearLayoutManager(SearchActivity.this));
+                    rvGames.setLayoutManager(new GridLayoutManager(SearchActivity.this, 2));
                     rvGames.setAdapter(adapter);
                 }
             }
@@ -167,5 +224,71 @@ public class SearchActivity extends AppCompatActivity {
                 Toast.makeText(SearchActivity.this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
+    }
+    private void showFilterDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 35, 50, 20);
+
+        TextView title = new TextView(this);
+        title.setText("Filter Games");
+        title.setTextColor(Color.parseColor("#9CFF22"));
+        title.setTextSize(22);
+        title.setTypeface(null, Typeface.BOLD);
+        title.setPadding(0, 0, 0, 25);
+
+        final EditText dialogStars = new EditText(this);
+        dialogStars.setHint("Min Stars 0-5");
+        dialogStars.setHintTextColor(Color.parseColor("#B8B8C8"));
+        dialogStars.setTextColor(Color.WHITE);
+        dialogStars.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+
+        final Spinner dialogBet = new Spinner(this);
+        ArrayAdapter<String> betAdapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"Any", "$", "$$", "$$$"}
+        );
+        dialogBet.setAdapter(betAdapter);
+
+        final Spinner dialogRisk = new Spinner(this);
+        ArrayAdapter<String> riskAdapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"Any", "low", "medium", "high"}
+        );
+        dialogRisk.setAdapter(riskAdapter);
+
+        layout.addView(title);
+        layout.addView(dialogStars);
+        layout.addView(dialogBet);
+        layout.addView(dialogRisk);
+
+        builder.setView(layout);
+
+        builder.setPositiveButton("Apply", (dialog, which) -> {
+            etStars.setText(dialogStars.getText().toString());
+            spinnerBet.setSelection(dialogBet.getSelectedItemPosition());
+            spinnerRisk.setSelection(dialogRisk.getSelectedItemPosition());
+
+            Toast.makeText(this, "Filters applied", Toast.LENGTH_SHORT).show();
+        });
+
+        builder.setNegativeButton("Cancel", null);
+
+        AlertDialog dialog = builder.create();
+
+        dialog.setOnShowListener(d -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawableResource(R.drawable.dialog_bg);
+            }
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.parseColor("#9CFF22"));
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.parseColor("#9CFF22"));
+        });
+
+        dialog.show();
     }
 }

@@ -14,6 +14,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BettingClientApp">
         <activity
+            android:name=".BalanceActivity" />
+
+        <activity
             android:name=".PlayActivity"
             android:exported="false" />
         <activity

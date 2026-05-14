@@ -1,14 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="190dp"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:layout_margin="4dp"
-    android:background="@android:drawable/edit_text">
+    android:padding="10dp"
+    android:layout_margin="8dp"
+    android:gravity="center"
+    android:background="@drawable/game_card_bg"
+    android:elevation="4dp">
 
-    <TextView android:id="@+id/tvGameName" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="18sp" android:textStyle="bold" />
-    <TextView android:id="@+id/tvLimits" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" />
-    <TextView android:id="@+id/tvStats" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" />
+    <ImageView
+        android:id="@+id/ivGameLogo"
+        android:layout_width="145dp"
+        android:layout_height="115dp"
+        android:scaleType="centerCrop"
+        android:background="@drawable/logo_round_bg"
+        android:clipToOutline="true"
+        android:adjustViewBounds="true" />
+
+    <TextView
+        android:id="@+id/tvGameName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:gravity="center"
+        android:layout_marginTop="10dp" />
+
+    <TextView
+        android:id="@+id/tvLimits"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tvStats"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
 
 </LinearLayout>

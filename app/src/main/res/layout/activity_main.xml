@@ -1,30 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="20dp"
-    android:gravity="center">
+    android:layout_height="match_parent">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Welcome to OneBet"
-        android:textSize="20sp"
-        android:layout_marginBottom="20dp"/>
-
-    <EditText
-        android:id="@+id/etPlayerId"
+    <!-- Background image -->
+    <ImageView
+        android:id="@+id/bgImage"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Enter Player ID"
-        android:inputType="text" />
+        android:layout_height="match_parent"
+        android:src="@drawable/onebet_background"
+        android:scaleType="centerCrop" />
 
-    <Button
-        android:id="@+id/btnConnect"
+    <!-- Your actual login content goes here -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Login &amp; Start"
-        android:layout_marginTop="20dp"/>
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="bottom|center_horizontal"
+        android:padding="28dp"
+        android:paddingBottom="70dp">
 
-</LinearLayout>
+        <EditText
+            android:id="@+id/etPlayerId"
+            android:layout_width="match_parent"
+            android:layout_height="55dp"
+            android:hint="Enter Player ID"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#BFC7D5"
+            android:backgroundTint="#9BEF2B"
+            android:inputType="text" />
+
+        <Button
+            android:id="@+id/btnConnect"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:layout_marginTop="22dp"
+            android:text="START"
+            android:textStyle="bold"
+            android:textColor="#101010"
+            android:backgroundTint="#9BEF2B" />
+
+    </LinearLayout>
+
+</FrameLayout>
