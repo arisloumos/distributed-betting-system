@@ -9,6 +9,7 @@
     android:background="@drawable/game_card_bg"
     android:elevation="4dp">
 
+    <!--logo του παιχνιδιού-->
     <ImageView
         android:id="@+id/ivGameLogo"
         android:layout_width="145dp"
@@ -18,6 +19,7 @@
         android:clipToOutline="true"
         android:adjustViewBounds="true" />
 
+    <!--Όνομα παιχνιδιού που εμφανίζεται κάτω από την εικόνα-->
     <TextView
         android:id="@+id/tvGameName"
         android:layout_width="match_parent"
@@ -28,12 +30,14 @@
         android:gravity="center"
         android:layout_marginTop="10dp" />
 
+    <!--TextView για τα όρια πονταρίσματος-->
     <TextView
         android:id="@+id/tvLimits"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:visibility="gone" />
 
+    <!--TextView για rating, risk και jackpot-->
     <TextView
         android:id="@+id/tvStats"
         android:layout_width="match_parent"

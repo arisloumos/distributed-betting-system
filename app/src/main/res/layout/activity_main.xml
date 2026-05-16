@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Background image -->
+    <!-- Εικόνα της αρχικής οθόνης -->
     <ImageView
         android:id="@+id/bgImage"
         android:layout_width="match_parent"
@@ -11,7 +11,7 @@
         android:src="@drawable/onebet_background"
         android:scaleType="centerCrop" />
 
-    <!-- Your actual login content goes here -->
+    <!-- Περιεχόμενο login -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -20,6 +20,7 @@
         android:padding="28dp"
         android:paddingBottom="70dp">
 
+        <!-- Εισαγωγή του Player ID -->
         <EditText
             android:id="@+id/etPlayerId"
             android:layout_width="match_parent"
@@ -30,6 +31,7 @@
             android:backgroundTint="#9BEF2B"
             android:inputType="text" />
 
+        <!-- Κουμπί εισόδου στην εφαρμογή -->
         <Button
             android:id="@+id/btnConnect"
             android:layout_width="match_parent"

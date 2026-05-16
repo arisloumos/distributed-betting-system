@@ -5,13 +5,13 @@
   - [X] Create logos & place them correctly
   - [X] Add them in the UI app
 - [X] Improve search screen UI
-  - [ ] Filters menu button
+  - [Χ] Filters menu button
 - [X] Improve betting screen UI 
   - [X] Game name on top
   - [X] Live updating balance
   - [X] Game Info
   - [X] Change result notification
-- [ ] Add professional comments
+- [Χ] Add professional comments
 
 ## 🐛 Bugs
 - [ ] Fix worker load balancing
