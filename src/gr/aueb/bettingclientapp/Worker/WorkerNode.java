@@ -133,7 +133,8 @@ public class WorkerNode {
                 } 
                 else if (cmd.equals("PUSH_TO_REDUCER")) {
                     // Εντολή από Master για έναρξη της φάσης Map
-                    sendToReducer();
+                    String jobId = in.readUTF(); // Διαβάζουμε το UUID
+                    sendToReducer(jobId);
                     out.writeUTF("DATA_SENT");
                 }
                 out.flush();
@@ -146,7 +147,7 @@ public class WorkerNode {
     /**
      * Φάση Map: Στέλνει τα τοπικά στατιστικά στον Reducer.
      */
-    private static void sendToReducer() {
+    private static void sendToReducer(String jobId) {
         Map<String, Double> gamePNLs = new HashMap<>();
         Map<String, String> gameProviders = new HashMap<>();
         Map<String, Double> playerStatsSnapshot;
@@ -162,12 +163,13 @@ public class WorkerNode {
             playerStatsSnapshot = new HashMap<>(playerStats);
         }
 
-        System.out.println("[WORKER] Pushing local statistics to Reducer at " + REDUCER_IP);
+        System.out.println("[WORKER] Pushing local statistics to Reducer at " + REDUCER_IP + " for Job: " + jobId);
         try (Socket s = new Socket(REDUCER_IP, REDUCER_PORT);
              ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
              ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
             
             out.writeObject("MAP_DATA");
+            out.writeUTF(jobId); // Στέλνουμε το UUID στον Reducer
             out.writeObject(gamePNLs);
             out.writeObject(gameProviders);
             out.writeObject(playerStatsSnapshot);

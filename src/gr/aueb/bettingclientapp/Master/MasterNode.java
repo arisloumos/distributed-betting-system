@@ -56,6 +56,15 @@ public class MasterNode {
     }
 
     /**
+     * Υπολογίζει τον Worker στον οποίο ανήκει ένα παιχνίδι.
+     * Χρησιμοποιεί SHA-256 για να πετύχει ομοιόμορφη κατανομή (Load Balancing)
+     */
+    private static int getWorkerIndex(String gameName) {
+        String shaHex = HashUtils.sha256(gameName);
+        return Math.abs(shaHex.hashCode()) % workers.size();
+    }
+
+    /**
      * ClientHandler: Διαχειρίζεται το πρωτόκολλο επικοινωνίας για κάθε αίτημα.
      */
     static class ClientHandler implements Runnable {
@@ -75,7 +84,7 @@ public class MasterNode {
                 if (type.equals("ADD_GAME")) {
                     Game g = (Game) in.readObject();
                     // Επιλογή Worker βάσει Hash του ονόματος (Routing Strategy)
-                    int idx = Math.abs(g.gameName.hashCode()) % workers.size();
+                    int idx = getWorkerIndex(g.gameName);
                     
                     if (checkIfGameExists(workers.get(idx), g.gameName)) {
                         out.writeUTF("REJECTED: Game already exists.");
@@ -86,7 +95,7 @@ public class MasterNode {
                 }
                 else if (type.equals("REMOVE_GAME") || type.equals("EDIT_GAME") || type.equals("RATE_GAME")) {
                     String name = in.readUTF();
-                    int idx = Math.abs(name.hashCode()) % workers.size();
+                    int idx = getWorkerIndex(name);
                     out.writeUTF(forwardUpdateToWorker(workers.get(idx), type, name, in));
                 }
 
@@ -103,29 +112,30 @@ public class MasterNode {
 
                 // --- MAPREDUCE ΣΤΑΤΙΣΤΙΚΑ (Manager) ---
                 else if (type.equals("STATS")) {
-                    System.out.println("[MASTER] Initiating MapReduce Job...");
+                    // Δημιουργία μοναδικού Job ID
+                    String jobId = UUID.randomUUID().toString();
+                    System.out.println("[MASTER] Initiating MapReduce Job: " + jobId);
                     
-                    // Βήμα 1: Ενημέρωση Reducer για το πλήθος των Workers
+                    // Βήμα 1: Αρχικοποίηση του Job στον Reducer
                     try (Socket sR = new Socket(REDUCER_IP, REDUCER_PORT);
                          ObjectOutputStream outR = new ObjectOutputStream(sR.getOutputStream())) {
-                        outR.writeObject("SET_WORKER_COUNT");
+                        outR.writeObject("INIT_JOB");
+                        outR.writeUTF(jobId);
                         outR.writeInt(workers.size());
                         outR.flush();
                     } catch (Exception e) { System.err.println("[MASTER] Reducer Error: " + e.getMessage()); }
 
-                    // Βήμα 2: Καθαρισμός παλιών στατιστικών
-                    callReducer("RESET_STATS");
-
-                    // Βήμα 3: Ειδοποίηση Workers να στείλουν δεδομένα (Map Phase)
+                    // Βήμα 2: Ειδοποίηση Workers να στείλουν δεδομένα για αυτό το Job
                     for (WorkerInfo w : workers) {
-                        forwardSimpleCmd(w, "PUSH_TO_REDUCER"); 
+                        forwardPushCmd(w, "PUSH_TO_REDUCER", jobId); 
                     }
 
-                    // Βήμα 4: Λήψη τελικών αποτελεσμάτων (Reduce Phase)
-                    Map<String, Object> results = getResultsFromReducer();
+
+                    // Βήμα 3: Λήψη τελικών αποτελεσμάτων
+                    Map<String, Object> results = getResultsFromReducer(jobId);
                     out.writeObject(results.get("providers"));
                     out.writeObject(results.get("players"));
-                    System.out.println("[MASTER] MapReduce Job completed.");
+                    System.out.println("[MASTER] MapReduce Job " + jobId + " completed.");
                 }
 
                 // --- ΔΙΑΔΙΚΑΣΙΑ ΠΟΝΤΑΡΙΣΜΑΤΟΣ (Player) ---
@@ -147,7 +157,7 @@ public class MasterNode {
                                 // 1. Δέσμευση ποσού (Atomic-like transaction)
                                 playerBalances.put(pId, currentBal - amt);
                                 
-                                int idx = Math.abs(gName.hashCode()) % workers.size();
+                                int idx = getWorkerIndex(gName);
                                 System.out.println("[MASTER] Calling Worker for bet processing...");
                                 
                                 // 2. Κλήση του Worker για τον υπολογισμό του κέρδους
@@ -272,19 +282,23 @@ public class MasterNode {
 
     // --- ΜΕΘΟΔΟΙ ΕΠΙΚΟΙΝΩΝΙΑΣ ΜΕ REDUCER ---
 
-    private static void callReducer(String cmd) {
-        try (Socket s = new Socket(REDUCER_IP, REDUCER_PORT);
-             ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream())) {
-            out.writeObject(cmd);
-            out.flush();
+    private static void forwardPushCmd(WorkerInfo w, String cmd, String jobId) {
+        try (Socket sock = new Socket(w.host, w.port);
+                ObjectOutputStream outW = new ObjectOutputStream(sock.getOutputStream());
+                ObjectInputStream inW = new ObjectInputStream(sock.getInputStream())) {
+            outW.writeObject(cmd);
+            outW.writeUTF(jobId);
+            outW.flush();
+            inW.readUTF(); 
         } catch (Exception e) {}
     }
 
-    private static Map<String, Object> getResultsFromReducer() {
+    private static Map<String, Object> getResultsFromReducer(String jobId) {
         try (Socket s = new Socket(REDUCER_IP, REDUCER_PORT);
              ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
              ObjectInputStream in = new ObjectInputStream(s.getInputStream())) {
             out.writeObject("GET_REDUCED_RESULTS");
+            out.writeUTF(jobId);
             out.flush();
             Map<String, Object> res = new HashMap<>();
             res.put("providers", in.readObject());
