@@ -29,6 +29,7 @@ public class SearchActivity extends AppCompatActivity {
     private Button btnAddBalance;
     private Button btnFilter;
     private String pId;
+    private boolean hasSearched = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,9 +71,17 @@ public class SearchActivity extends AppCompatActivity {
 
         btnSettings.setOnClickListener(v -> showSettingsDialog());
 
-        btnSearch.setOnClickListener(v -> performSearch());
-    }
+        btnSearch.setOnClickListener(v -> { hasSearched = true;performSearch(); });
 
+    }
+    //Για ενημέρωση αξιολόγησης
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (hasSearched) {
+            performSearch();
+        }
+    }
     private void viewBalance() {
         // Άνοιγμα της BalanceActivity και μεταφορά του PLAYER_ID
         Intent intent = new Intent(SearchActivity.this, BalanceActivity.class);

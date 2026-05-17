@@ -2,26 +2,28 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:padding="20dp"
     android:background="#0D0D0F">
 
     <!--Κουμπί για άνοιγμα των ρυθμίσεων-->
-    <Button android:id="@+id/btnSettings" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Settings" android:backgroundTint="#9CFF22"
-        android:textColor="#050607"/>
+    <com.google.android.material.button.MaterialButton android:id="@+id/btnSettings" android:layout_width="match_parent" android:layout_height="48dp" android:text="Settings"
+        android:letterSpacing="0.1" android:textSize="16sp" android:textStyle="bold" android:backgroundTint="#9CFF22" android:textColor="#050607"/>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal">
 
-        <!--Κουμπί για add balance-->
-        <Button android:id="@+id/btnAddBalance" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1"  android:layout_marginEnd="8dp" android:text="Add Balance" android:backgroundTint="#9CFF22"
-            android:textColor="#050607"/>
-
+        <!--Κουμπί για add balance-material button είναι το πιο εξελιγμένο -->
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnAddBalance" style="@style/Widget.MaterialComponents.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1"
+            android:layout_marginEnd="8dp" android:text="Add Balance" android:letterSpacing="0.05" android:textColor="#9CFF22" app:backgroundTint="@null" app:strokeColor="#9CFF22" app:strokeWidth="1.5dp"/>
         <!--Κουμπί για view balance-->
-        <Button android:id="@+id/btnViewBalance" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:layout_marginStart="8dp"  android:text="View Balance" android:backgroundTint="#9CFF22"
-            android:textColor="#050607"/>
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnViewBalance" style="@style/Widget.MaterialComponents.Button.OutlinedButton" android:layout_width="0dp"
+            android:layout_height="48dp" android:layout_weight="1" android:layout_marginStart="8dp" android:text="View Balance" android:letterSpacing="0.05" android:textColor="#9CFF22" app:backgroundTint="@null" app:strokeColor="#9CFF22" app:strokeWidth="1.5dp"/>
+
+
     </LinearLayout>
 
     <EditText android:id="@+id/etStars" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Min Stars (0-5)" android:inputType="number" android:textColor="#FFFFFF"
@@ -34,13 +36,13 @@
     <Spinner android:id="@+id/spinnerRisk" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:visibility="gone"/>
 
     <!--Κουμπί για άνοιγμα του filter dialog -->
-    <Button
-        android:id="@+id/btnFilter" android:layout_width="match_parent" android:layout_height="58dp" android:text="Filters" android:textStyle="bold"
-        android:textColor="@color/white" android:background="@drawable/dark_button_bg" android:layout_marginTop="18dp" android:textSize="16sp" />
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnFilter" style="@style/Widget.MaterialComponents.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="18dp"
+        android:text="Filters" android:textSize="16sp" android:textStyle="bold" android:textColor="@color/white" android:background="@drawable/dark_button_bg" app:backgroundTint="@null" />
 
     <!--Κουμπί για την αναζήτηση παιχνιδιών -->
-    <Button android:id="@+id/btnSearch" android:layout_width="match_parent" android:layout_height="52dp" android:text="Search Games" android:layout_marginTop="14dp" android:backgroundTint="#9CFF22"
-        android:textColor="#050607"/>
+    <com.google.android.material.button.MaterialButton android:id="@+id/btnSearch" android:layout_width="match_parent" android:layout_height="56dp" android:text="Search Games" android:layout_marginTop="14dp"
+        android:letterSpacing="0.1" android:textSize="16sp" android:textStyle="bold" android:backgroundTint="#9CFF22" android:textColor="#050607"/>
 
     <!--RecyclerView όπου εμφανίζονται τα παιχνίδια-->
     <androidx.recyclerview.widget.RecyclerView
