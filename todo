@@ -14,13 +14,13 @@
 - [Χ] Add professional comments
 
 ## 🐛 Bugs
-- [ ] Fix worker load balancing
+- [Χ] Fix worker load balancing
 - [X] Fix infinite ratings glitch (after bet result is displayed)
 - [X] After rating exit betting screen (also skip rating if you want)
 
 ## 💻 Part A notes
-- [ ] srg hash map gia kathe game (den thimame ti simenei afto)
-- [ ] uuid (unique id) gia kathe request mapreduce 
+- [X] srg hash map gia kathe game (den thimame ti simenei afto)
+- [X] uuid (unique id) gia kathe request mapreduce 
 
 ## 🧪 Tests
 - [ ] Test on multiple laptops

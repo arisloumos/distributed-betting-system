@@ -18,14 +18,9 @@ public class SRGServer {
     private static final int BUFFER_SIZE = 50; 
     
     // Ο κοινόχρηστος Buffer για τους τυχαίους αριθμούς
-    private static final LinkedList<Integer> buffer = new LinkedList<>();
+    private static final Map<String, LinkedList<Integer>> gameBuffers = new HashMap<>();
 
     public static void main(String[] args) {
-        // Εκκίνηση του Producer Thread που γεμίζει τον buffer στο παρασκήνιο
-        Thread producer = new Thread(new Producer());
-        producer.setDaemon(true); // Τερματίζει αυτόματα αν κλείσει ο server
-        producer.start();
-
         System.out.println("[SRG] Server started on port " + PORT);
         System.out.println("[SRG] Buffer size set to: " + BUFFER_SIZE);
 
@@ -42,33 +37,35 @@ public class SRGServer {
     }
 
     /**
-     * Producer: Παράγει συνεχώς τυχαίους αριθμούς.
+     * Producer: Παράγει συνεχώς τυχαίους αριθμούς για ΕΝΑ συγκεκριμένο παιχνίδι.
      * Χρησιμοποιεί wait() αν ο buffer γεμίσει και notifyAll() όταν προσθέτει στοιχεία.
      */
     static class Producer implements Runnable {
+        private final LinkedList<Integer> myBuffer;
+        private final String secretS;
         private Random random = new Random();
+
+        public Producer(LinkedList<Integer> buffer, String secret) {
+            this.myBuffer = buffer;
+            this.secretS = secret;
+        }
 
         @Override
         public void run() {
             try {
                 while (true) {
-                    synchronized (buffer) {
-                        // Αν ο buffer είναι γεμάτος, το thread μπαίνει σε κατάσταση αναμονής
-                        while (buffer.size() >= BUFFER_SIZE) {
-                            buffer.wait();
+                    synchronized (myBuffer) {
+                        while (myBuffer.size() >= BUFFER_SIZE) {
+                            myBuffer.wait();
                         }
-                        
                         int num = random.nextInt(1000000); 
-                        buffer.add(num);
-                        
-                        // Ειδοποίηση των καταναλωτών (WorkerHandlers) ότι υπάρχει διαθέσιμος αριθμός
-                        buffer.notifyAll();
+                        myBuffer.add(num);
+                        myBuffer.notifyAll();
                     }
-                    // Μικρή παύση για εξοικονόμηση πόρων συστήματος
                     Thread.sleep(50); 
                 }
             } catch (InterruptedException e) {
-                System.err.println("[SRG] Producer interrupted.");
+                System.err.println("[SRG] Producer for " + secretS + " interrupted.");
             }
         }
     }
@@ -92,19 +89,32 @@ public class SRGServer {
             ) {
                 // Λήψη του Secret S από τον Worker για το hashing
                 String secretS = in.readUTF();
-                
-                int randomNumber;
-                synchronized (buffer) {
-                    // Αν ο buffer είναι άδειος, το thread περιμένει τον Producer
-                    while (buffer.isEmpty()) {
-                        System.out.println("[SRG] Buffer empty, waiting for producer...");
-                        buffer.wait();
+                LinkedList<Integer> myBuffer;
+
+                // Εύρεση ή δημιουργία του buffer για το συγκεκριμένο παιχνίδι (secretS)
+                synchronized (gameBuffers) {
+                    if (!gameBuffers.containsKey(secretS)) {
+                        myBuffer = new LinkedList<>();
+                        gameBuffers.put(secretS, myBuffer);
+                        
+                        // Ξεκινάμε μια νέα Γεννήτρια (Producer) αποκλειστικά για αυτό το παιχνίδι!
+                        Thread p = new Thread(new Producer(myBuffer, secretS));
+                        p.setDaemon(true);
+                        p.start();
+                        System.out.println("[SRG] Created new Generator & Buffer for game secret: " + secretS);
+                    } else {
+                        myBuffer = gameBuffers.get(secretS);
                     }
-                    // Λήψη του πρώτου διαθέσιμου αριθμού (FIFO)
-                    randomNumber = buffer.removeFirst();
-                    
-                    // Ειδοποίηση του Producer ότι άδειασε θέση στον buffer
-                    buffer.notifyAll();
+                }
+
+                int randomNumber;
+                // Κατανάλωση ενός αριθμού από τον αποκλειστικό buffer του παιχνιδιού
+                synchronized (myBuffer) {
+                    while (myBuffer.isEmpty()) {
+                        myBuffer.wait();
+                    }
+                    randomNumber = myBuffer.removeFirst();
+                    myBuffer.notifyAll();
                 }
 
                 // Δημιουργία ασφαλούς Hash: SHA256(αριθμός + secret)
