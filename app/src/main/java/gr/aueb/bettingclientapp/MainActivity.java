@@ -8,6 +8,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import gr.aueb.bettingclientapp.Common.Constants;
 
 public class MainActivity extends AppCompatActivity {
     private EditText etPlayerId;
@@ -21,6 +22,12 @@ public class MainActivity extends AppCompatActivity {
 
         // Άνοιγμα των SharedPreferences της εφαρμογής
         prefs = getSharedPreferences("BettingPrefs", Context.MODE_PRIVATE);
+
+        // Φόρτωση της IP/Port και ενημέρωση του NetworkManager
+        String savedIp = prefs.getString("MASTER_IP", Constants.MASTER_IP);
+        int savedPort = prefs.getInt("MASTER_PORT", Constants.MASTER_PORT);
+        gr.aueb.bettingclientapp.network.NetworkManager.setServerDetails(savedIp, savedPort);
+
         etPlayerId = findViewById(R.id.etPlayerId);
         btnConnect = findViewById(R.id.btnConnect);
 

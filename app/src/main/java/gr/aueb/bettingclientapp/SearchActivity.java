@@ -192,10 +192,16 @@ public class SearchActivity extends AppCompatActivity {
 
         // Αποθήκευση των ρυθμίσεων στα SharedPreferences
         builder.setPositiveButton("Save", (dialog, which) -> {
+            String newIp = etIp.getText().toString();
+            int newPort = Integer.parseInt(etPort.getText().toString());
+
             getSharedPreferences("BettingPrefs", MODE_PRIVATE).edit()
-                    .putString("MASTER_IP", etIp.getText().toString())
-                    .putInt("MASTER_PORT", Integer.parseInt(etPort.getText().toString()))
+                    .putString("MASTER_IP", newIp)
+                    .putInt("MASTER_PORT", newPort)
                     .apply();
+
+            // Ενημερώνουμε τον NetworkManager
+            NetworkManager.setServerDetails(newIp, newPort);
 
             Toast.makeText(this, "Settings Saved!", Toast.LENGTH_SHORT).show();
         });

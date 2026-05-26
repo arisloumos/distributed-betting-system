@@ -11,6 +11,16 @@ public class NetworkManager {
     // Executor για να τρέχουμε τα Sockets σε background thread
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
 
+    // Δυναμικές μεταβλητές (αρχικά παίρνουν τα defaults)
+    private static String serverIp = Constants.MASTER_IP;
+    private static int serverPort = Constants.MASTER_PORT;
+
+    // Μέθοδος για να ενημερώνουμε την IP από τα Activities
+    public static void setServerDetails(String ip, int port) {
+        serverIp = ip;
+        serverPort = port;
+    }
+
     // Interface για να παίρνουμε την απάντηση πίσω στο UI
     public interface NetworkCallback<T> {
         void onSuccess(T result);
@@ -21,7 +31,7 @@ public class NetworkManager {
         executor.execute(new Runnable() {
             @Override
             public void run() {
-                try (Socket socket = new Socket(Constants.MASTER_IP, Constants.MASTER_PORT);
+                try (Socket socket = new Socket(serverIp, serverPort);
                      ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
                      ObjectInputStream in = new ObjectInputStream(socket.getInputStream())) {
 
@@ -49,7 +59,7 @@ public class NetworkManager {
 
     public static void sendBalanceRequest(final String pId, final double amount, final NetworkCallback<String> callback) {
         executor.execute(() -> {
-            try (Socket socket = new Socket(Constants.MASTER_IP, Constants.MASTER_PORT);
+            try (Socket socket = new Socket(serverIp, serverPort);
                  ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
                  ObjectInputStream in = new ObjectInputStream(socket.getInputStream())) {
 
@@ -73,7 +83,7 @@ public class NetworkManager {
 
     public static void sendGetBalanceRequest(final String pId, final NetworkCallback<String> callback) {
         executor.execute(() -> {
-            try (Socket socket = new Socket(Constants.MASTER_IP, Constants.MASTER_PORT);
+            try (Socket socket = new Socket(serverIp, serverPort);
                  ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
                  ObjectInputStream in = new ObjectInputStream(socket.getInputStream())) {
 
@@ -96,7 +106,7 @@ public class NetworkManager {
 
     public static void sendPlayRequest(String pId, String gName, double amt, NetworkCallback<String> callback) {
         executor.execute(() -> {
-            try (Socket socket = new Socket(Constants.MASTER_IP, Constants.MASTER_PORT);
+            try (Socket socket = new Socket(serverIp, serverPort);
                  ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
                  ObjectInputStream in = new ObjectInputStream(socket.getInputStream())) {
 
@@ -115,7 +125,7 @@ public class NetworkManager {
 
     public static void sendRateRequest(String gName, int rating, NetworkCallback<String> callback) {
         executor.execute(() -> {
-            try (Socket socket = new Socket(Constants.MASTER_IP, Constants.MASTER_PORT);
+            try (Socket socket = new Socket(serverIp, serverPort);
                  ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
                  ObjectInputStream in = new ObjectInputStream(socket.getInputStream())) {
 
