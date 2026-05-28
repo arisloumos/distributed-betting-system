@@ -222,6 +222,7 @@ public class SearchActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    // Search
     private void performSearch() {
         // Διαβάζουμε τις τιμές των φίλτρων από τα κρυφά views
         int stars = etStars.getText().toString().isEmpty() ? 0 : Integer.parseInt(etStars.getText().toString());

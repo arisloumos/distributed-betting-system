@@ -42,10 +42,10 @@ public class NetworkManager {
                     }
                     out.flush();
 
-                    // Λήψη απάντησης (το cast θα γίνει στο Activity)
+                    // Λήψη απάντησης parsing (το cast θα γίνει στο Activity)
                     final T response = (T) in.readObject();
 
-                    // Επιστροφή στο UI Thread
+                    // Ενημερωση στο UI Thread
                     android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
                     mainHandler.post(() -> callback.onSuccess(response));
 

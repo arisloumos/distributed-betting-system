@@ -58,7 +58,7 @@ public class PlayActivity extends AppCompatActivity {
         // Φορτωνει το Live Balance
         fetchLiveBalance();
 
-        //Λογικη Πονταρισματος
+        //Λογικη Πονταρισματος (play)
         btnPlay.setOnClickListener(v -> {
             String betStr = etBet.getText().toString();
             if (betStr.isEmpty()) {
